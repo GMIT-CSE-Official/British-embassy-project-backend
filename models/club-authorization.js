@@ -1,8 +1,7 @@
 const mongoose = require("mongoose");
 const crypto = require("crypto");
-const { create } = require("./club-authorization");
 
-const Operators = new mongoose.Schema({
+const ClubAuthorization = new mongoose.Schema({
   username: {
     type: String,
     required: true,
@@ -12,31 +11,25 @@ const Operators = new mongoose.Schema({
     type: String,
     required: true,
   },
-  mobileNumber: {
+  accessKey: {
     type: String,
     required: true,
-  },
-  email: {
-    type: String,
-    required: true,
-  },
-  profileImage: {
-    type: String,
   },
   role: {
     type: String,
-    enum: ["admin", "Operator", "developer"],
-    default: "Operator",
+    default: "club",
   },
-  resetPasswordToken: String,
-  resetPasswordExpire: Date,
-  createdAt: {
+  resetPasswordToken: {
+    type: String,
+    default: null,
+  },
+  resetPasswordExpire: {
     type: Date,
-    default: Date.now(),
+    default: null,
   },
 });
 
-Operators.methods.getResetToken = function () {
+ClubAuthorization.methods.getResetToken = function () {
   const resetToken = crypto.randomBytes(20).toString("hex");
   this.resetPasswordToken = crypto
     .createHash(process.env.HASH_ALGO)
@@ -46,4 +39,5 @@ Operators.methods.getResetToken = function () {
   this.save();
   return resetToken;
 };
-module.exports = mongoose.model("Operator", Operators);
+
+module.exports = mongoose.model("ClubAuthorization", ClubAuthorization);

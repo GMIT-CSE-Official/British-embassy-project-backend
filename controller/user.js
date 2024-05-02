@@ -2,7 +2,9 @@ const Operators = require("../models/operators");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const Node_cache = require("node-cache");
-const nodemailer = require("nodemailer");
+const { sendMail } = require("../utils/mail-service");
+const crypto = require("crypto");
+const { log } = require("console");
 
 const node_cache = new Node_cache();
 
@@ -255,26 +257,17 @@ exports.forgetPassword = async (req, res) => {
         data: null,
       });
     }
-    const resetToken = user.getResetToken();
-    console.log(process.env.PASSWORD);
-    console.log(process.env.EMAIL);
-
-    const transport = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      auth: {
-        user: process.env.EMAIL,
-        pass: process.env.PASSWORD,
-      },
+    const resetToken = await user.getResetToken();
+    Operators.findByIdAndUpdate(res);
+    const resetUrl = `${process.env.FRONTEND_URL}/operator/reset-password/${resetToken}`;
+    const text = `You have requested for password reset. Please click on this link to reset your password ${resetUrl}. If you have not requested for password reset, please ignore this email.`;
+    await sendMail(user.email, "Password reset", text);
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Password reset link sent to your email",
+      exception: null,
+      data: null,
     });
-    console.log(user.email);
-    const info = await transport.sendMail({
-      from: process.env.EMAIL,
-      to: user.email,
-      subject: "Password Reset",
-      text: `You are receiving this email because you requested a password reset. Please click on the following link to reset your password: \n\n ${process.env.CLIENT_URL}/resetpassword/${resetToken}`,
-    });
-    console.log(info);
   } catch (error) {
     console.log(error);
     return res.status(500).json({
@@ -286,22 +279,64 @@ exports.forgetPassword = async (req, res) => {
   }
 };
 
-const resetPassword = async (req, res) => {
-  const { token } = req.params;
-  const user = await Operators.findOne({
-    resetPasswordToken: token,
+exports.resetPassword = async (req, res) => {
+  const { token } = req.body;
+  const hashedToken = crypto
+    .createHash(process.env.HASH_ALGO)
+    .update(token)
+    .digest("hex");
+  await Operators.findOne({
+    resetPasswordToken: hashedToken,
     resetPasswordExpire: { $gt: Date.now() },
-  });
-  if (!user) {
-    return res.status(400).json({
-      message: "Invalid token",
+  })
+    .then((user) => {
+      if (!user) {
+        return res.status(400).json({
+          statusCode: 400,
+          message: "Invalid token",
+          exception: null,
+          data: null,
+        });
+      }
+      const { newPassword } = req.body;
+      user.password = bcrypt.hashSync(newPassword, 10);
+      user.save();
+      return res.status(200).json({
+        statusCode: 200,
+        message: "Password reset successfully",
+        exception: null,
+        data: null,
+      });
+    })
+    .catch((error) => {
+      console.log(error);
+      return res.status(500).json({
+        statusCode: 500,
+        message: "Internal server error",
+        exception: error,
+        data: null,
+      });
+    });
+};
+
+exports.logout = async (req, res) => {
+  try {
+    const { id } = req.user;
+    node_cache.del(`user-${id}`);
+    res.clearCookie("auth-token");
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Logout successful",
+      data: null,
+      exception: null,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      exception: error,
+      data: null,
     });
   }
-  user.password = req.body.password;
-  user.resetPasswordToken = undefined;
-  user.resetPasswordExpire = undefined;
-  await user.save();
-  return res.status(200).json({
-    message: "Password reset successful",
-  });
 };

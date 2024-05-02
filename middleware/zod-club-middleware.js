@@ -1,13 +1,14 @@
+const { validate } = require("../models/club-authorization");
 const {
-  registrationSchema,
-  loginSchema,
-  forgrtPasswordSchema,
+  clubRegistrationSchema,
+  clubLoginSchema,
+  forgetPasswordSchema,
   resetPasswordSchema,
-} = require("../utils/user-zod-schema");
+} = require("../utils/club-zod-schema");
 
-const validateRegistration = (req, res, next) => {
+const validateClubRegistration = async (req, res, next) => {
   try {
-    registrationSchema.parse(req.body);
+    clubRegistrationSchema.parse(req.body);
     next();
   } catch (error) {
     const errorMsg = error.errors.map((err) => err.message).join(", ");
@@ -18,9 +19,9 @@ const validateRegistration = (req, res, next) => {
   }
 };
 
-const validateLogin = (req, res, next) => {
+const validateClubLogin = async (req, res, next) => {
   try {
-    loginSchema.parse(req.body);
+    clubLoginSchema.parse(req.body);
     next();
   } catch (error) {
     const errorMsg = error.errors.map((err) => err.message).join(", ");
@@ -31,9 +32,9 @@ const validateLogin = (req, res, next) => {
   }
 };
 
-const validateForgetPassword = (req, res, next) => {
+const validateClubUpdate = async (req, res, next) => {
   try {
-    forgrtPasswordSchema.parse(req.body);
+    updateClubSchema.parse(req.body);
     next();
   } catch (error) {
     const errorMsg = error.errors.map((err) => err.message).join(", ");
@@ -43,13 +44,27 @@ const validateForgetPassword = (req, res, next) => {
     });
   }
 };
+
+const validateForgetPassword = async (req, res, next) => {
+  try {
+    forgetPasswordSchema.parse(req.body);
+    next();
+  } catch (error) {
+    const errorMsg = error.errors.map((err) => err.message).join(", ");
+    res.status(400).json({
+      message: "Invalid request body",
+      error: errorMsg,
+    });
+  }
+};
+
 const validateResetPassword = (req, res, next) => {
   try {
     resetPasswordSchema.parse(req.body);
     next();
   } catch (error) {
     const errorMsg = error.errors.map((err) => err.message).join(", ");
-    res.status(400).json({
+    return res.status(400).json({
       message: "Invalid request body",
       error: errorMsg,
     });
@@ -57,8 +72,9 @@ const validateResetPassword = (req, res, next) => {
 };
 
 module.exports = {
-  validateRegistration,
-  validateLogin,
+  validateClubRegistration,
+  validateClubLogin,
   validateForgetPassword,
   validateResetPassword,
+  validateClubUpdate,
 };
