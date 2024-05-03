@@ -8,6 +8,7 @@ const {
   forgetPassword,
   resetPassword,
   logout,
+  sendResetTokenAgain,
 } = require("../controller/user");
 const {
   validateRegistration,
@@ -23,17 +24,14 @@ router.get("/all", isAuthenticated, isAdmin, getAllOperators);
 router.post("/register", validateRegistration, register);
 router.post("/login", validateLogin, loginUser);
 router.put("/update", isAuthenticated, updateOperator);
-router.put("/forgot-password", (req, res) => {
-  res.send("This route is under devlopment");
-});
-router.put("/reset-password", (req, res) => {
-  res.send("This route is under devlopment");
-});
-router.get("/logout", (req, res) => {
-  res.send("This route is under devlopment");
-});
-router.get("/profile", (req, res) => {
-  res.send("This route is under devlopment");
-});
+router.put("/forgot-password", validateForgetPassword, forgetPassword);
+router.put("/reset-password", validateResetPassword, resetPassword);
+router.put(
+  "/sned-reset-token-again",
+  validateForgetPassword,
+  sendResetTokenAgain
+);
+router.get("/logout", isAuthenticated, logout);
+router.get("/profile", isAuthenticated, getOperatorById);
 
 module.exports = router;

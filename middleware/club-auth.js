@@ -1,3 +1,4 @@
+const jwt = require("jsonwebtoken");
 class ClubAuth {
   isAuthenticatedClub(req, res, next) {
     const token = req.cookies["auth-token"];
@@ -11,7 +12,8 @@ class ClubAuth {
     }
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.club = decoded.club;
+      console.log(decoded);
+      req.club = decoded;
       next();
     } catch (error) {
       return res.status(401).json({

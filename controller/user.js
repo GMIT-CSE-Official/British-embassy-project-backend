@@ -340,3 +340,37 @@ exports.logout = async (req, res) => {
     });
   }
 };
+
+exports.sendResetTokenAgain = async (req, res) => {
+  try {
+    const { username } = req.body;
+    const user = await Operators.findOne({
+      username,
+    });
+    if (!user) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "User not found",
+        exception: null,
+        data: null,
+      });
+    }
+    const resetUrl = `${process.env.FRONTEND_URL}/operator/reset-password/${user.resetPasswordToken}`;
+    const text = `You have requested for password reset. Please click on this link to reset your password ${resetUrl}. If you have not requested for password reset, please ignore this email.`;
+    await sendMail(user.email, "Password reset", text);
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Password reset link sent to your email",
+      exception: null,
+      data: null,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      exception: error,
+      data: null,
+    });
+  }
+};

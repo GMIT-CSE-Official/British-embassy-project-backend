@@ -4,6 +4,7 @@ const {
   clubLoginSchema,
   forgetPasswordSchema,
   resetPasswordSchema,
+  updateClubSchema,
 } = require("../utils/club-zod-schema");
 
 const validateClubRegistration = async (req, res, next) => {
@@ -22,19 +23,6 @@ const validateClubRegistration = async (req, res, next) => {
 const validateClubLogin = async (req, res, next) => {
   try {
     clubLoginSchema.parse(req.body);
-    next();
-  } catch (error) {
-    const errorMsg = error.errors.map((err) => err.message).join(", ");
-    res.status(400).json({
-      message: "Invalid request body",
-      error: errorMsg,
-    });
-  }
-};
-
-const validateClubUpdate = async (req, res, next) => {
-  try {
-    updateClubSchema.parse(req.body);
     next();
   } catch (error) {
     const errorMsg = error.errors.map((err) => err.message).join(", ");
@@ -76,5 +64,4 @@ module.exports = {
   validateClubLogin,
   validateForgetPassword,
   validateResetPassword,
-  validateClubUpdate,
 };

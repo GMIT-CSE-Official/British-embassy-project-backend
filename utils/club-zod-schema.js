@@ -37,23 +37,6 @@ const clubLoginSchema = z.object({
     }),
 });
 
-const updateClubSchema = z.object({
-  username: z
-    .string()
-    .min(3, {
-      message: "Username must be atleast 3 characters long",
-    })
-    .max(50, {
-      message: "Username must be atmost 50 characters long",
-    }),
-  password: z
-    .string({
-      message: "Password must be atleast 6 characters long",
-    })
-    .min(6, {
-      message: "Password must be atleast 6 characters long",
-    }),
-});
 const forgetPasswordSchema = z.object({
   username: z
     .string()
@@ -75,7 +58,6 @@ const resetPasswordSchema = z.object({
 module.exports = {
   clubRegistrationSchema,
   clubLoginSchema,
-  updateClubSchema,
   forgetPasswordSchema,
   resetPasswordSchema,
 };
