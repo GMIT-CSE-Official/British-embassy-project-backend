@@ -60,4 +60,18 @@ const loginSchema = z.object({
   password: z.string({ message: "Please enter password" }),
 });
 
-module.exports = { registrationSchema, loginSchema };
+const forgrtPasswordSchema = z.object({
+  username: z.string({ message: "Please enter username" }),
+});
+
+const resetPasswordSchema = z.object({
+  newPassword: z.string({ message: "Please enter new password" }),
+  token: z.string({ message: "Invalid token" }),
+});
+
+module.exports = {
+  registrationSchema,
+  loginSchema,
+  resetPasswordSchema,
+  forgrtPasswordSchema,
+};
