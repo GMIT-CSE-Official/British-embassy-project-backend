@@ -27,6 +27,10 @@ const ClubAuthorization = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  createdAt: {
+    type: Date,
+    default: Date.now(),
+  },
 });
 
 ClubAuthorization.methods.getResetToken = function () {

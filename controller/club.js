@@ -39,22 +39,15 @@ exports.createClub = async (req, res) => {
     );
 
     user.accessKey = jwtToken;
+
     await user.save();
 
-    return res
-      .cookie("auth-token", jwtToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 1000 * 60 * 60 * 24,
-      })
-      .status(201)
-      .json({
-        statusCode: 201,
-        message: "Club created successfully",
-        data: user,
-        exception: null,
-      });
+    return res.status(201).json({
+      statusCode: 201,
+      message: "Club created successfully",
+      data: user,
+      exception: null,
+    });
   } catch (error) {
     console.log(error);
     return res.status(500).json({
@@ -88,20 +81,12 @@ exports.login = async (req, res) => {
       });
     }
 
-    return res
-      .status(200)
-      .cookie("auth-token", club.accessKey, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 1000 * 60 * 60 * 24,
-      })
-      .json({
-        statusCode: 200,
-        message: "Login successful",
-        data: club,
-        error: null,
-      });
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Login successful",
+      data: club,
+      error: null,
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({

@@ -4,7 +4,7 @@ const bcrypt = require("bcrypt");
 const Node_cache = require("node-cache");
 const { sendMail } = require("../utils/mail-service");
 const crypto = require("crypto");
-const { log } = require("console");
+const clubAuthorization = require("../models/club-authorization");
 
 const node_cache = new Node_cache();
 
@@ -84,7 +84,42 @@ exports.register = async (req, res) => {
       address,
       expiryDate,
       profileImage,
+      accessKey,
     } = req.body;
+
+    if (!accessKey) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Please do club registration first!",
+        data: null,
+        exception: "No access key found",
+      });
+    }
+
+    const decodedAccessKey = jwt.verify(accessKey, process.env.JWT_SECRET);
+
+    if (!decodedAccessKey.username || !decodedAccessKey.role) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Invalid access key",
+        data: null,
+        exception: null,
+      });
+    }
+
+    const club = await clubAuthorization.findOne({
+      username: decodedAccessKey.username,
+      accessKey,
+    });
+
+    if (!club) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Please register in club!",
+        data: null,
+        exception: "club not found",
+      });
+    }
 
     const user = await Operators.findOne({
       $or: [{ username, mobileNumber }],
@@ -145,7 +180,41 @@ exports.register = async (req, res) => {
 
 exports.loginUser = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, accessKey } = req.body;
+
+    if (!accessKey) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Please do club registration first!",
+        data: null,
+        exception: "No access key found",
+      });
+    }
+
+    const decodedAccessKey = jwt.verify(accessKey, process.env.JWT_SECRET);
+
+    if (!decodedAccessKey.username || !decodedAccessKey.role) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Invalid access key",
+        data: null,
+        exception: null,
+      });
+    }
+
+    const club = await clubAuthorization.findOne({
+      username: decodedAccessKey.username,
+      accessKey,
+    });
+
+    if (!club) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Please register in club!",
+        data: null,
+        exception: "club not found",
+      });
+    }
 
     const user = await Operators.findOne({ username });
     console.log(user);
