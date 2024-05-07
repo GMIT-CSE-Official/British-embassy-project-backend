@@ -3,6 +3,7 @@ const {
   loginSchema,
   forgrtPasswordSchema,
   resetPasswordSchema,
+  addMemberSchema,
 } = require("../utils/user-zod-schema");
 
 const validateRegistration = (req, res, next) => {
@@ -56,9 +57,23 @@ const validateResetPassword = (req, res, next) => {
   }
 };
 
+const validateAddMember = (req, res, next) => {
+  try {
+    addMemberSchema.parse(req.body);
+    next();
+  } catch (error) {
+    const errorMsg = error.errors.map((err) => err.message).join(", ");
+    res.status(400).json({
+      message: "Invalid request body",
+      error: errorMsg,
+    });
+  }
+};
+
 module.exports = {
   validateRegistration,
   validateLogin,
   validateForgetPassword,
   validateResetPassword,
+  validateAddMember,
 };

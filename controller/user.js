@@ -5,6 +5,7 @@ const Node_cache = require("node-cache");
 const { sendMail } = require("../utils/mail-service");
 const crypto = require("crypto");
 const clubAuthorization = require("../models/club-authorization");
+const MemberSchema = require("../models/members");
 
 const node_cache = new Node_cache();
 
@@ -121,6 +122,15 @@ exports.register = async (req, res) => {
       });
     }
 
+    if (club.role !== process.env.CLUB_ROLE) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "You are not authorized to register operator",
+        data: null,
+        exception: "Unauthorized access",
+      });
+    }
+
     const user = await Operators.findOne({
       $or: [{ username, mobileNumber }],
     });
@@ -213,6 +223,15 @@ exports.loginUser = async (req, res) => {
         message: "Please register in club!",
         data: null,
         exception: "club not found",
+      });
+    }
+
+    if (club.role !== process.env.CLUB_ROLE) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "You are not authorized to register operator",
+        data: null,
+        exception: "Unauthorized access",
       });
     }
 
@@ -388,28 +407,6 @@ exports.resetPassword = async (req, res) => {
     });
 };
 
-exports.logout = async (req, res) => {
-  try {
-    const { id } = req.user;
-    node_cache.del(`user-${id}`);
-    res.clearCookie("auth-token");
-    return res.status(200).json({
-      statusCode: 200,
-      message: "Logout successful",
-      data: null,
-      exception: null,
-    });
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({
-      statusCode: 500,
-      message: "Internal server error",
-      exception: error,
-      data: null,
-    });
-  }
-};
-
 exports.sendResetTokenAgain = async (req, res) => {
   try {
     const { username } = req.body;
@@ -432,6 +429,28 @@ exports.sendResetTokenAgain = async (req, res) => {
       message: "Password reset link sent to your email",
       exception: null,
       data: null,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      exception: error,
+      data: null,
+    });
+  }
+};
+
+exports.logout = async (req, res) => {
+  try {
+    const { id } = req.user;
+    node_cache.del(`user-${id}`);
+    res.clearCookie("auth-token");
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Logout successful",
+      data: null,
+      exception: null,
     });
   } catch (error) {
     console.log(error);
