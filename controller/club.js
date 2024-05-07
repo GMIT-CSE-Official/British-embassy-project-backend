@@ -3,7 +3,6 @@ const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { sendMail } = require("../utils/mail-service");
-const { error } = require("console");
 const clubAuthorization = require("../models/club-authorization");
 
 exports.createClub = async (req, res) => {

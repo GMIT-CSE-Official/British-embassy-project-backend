@@ -69,9 +69,28 @@ const resetPasswordSchema = z.object({
   token: z.string({ message: "Invalid token" }),
 });
 
+const addMemberSchema = z.object({
+  name: z.string({ message: "Please enter name" }),
+  mobileNumber: z.string({ message: "Please enter mobile number" }),
+  image_file_path: z.string({ message: "Please upload image" }),
+  address: z.string({ message: "Please enter address" }),
+  expiryDate: z.string({ message: "Please enter expiry date" }),
+});
+
+const updateMemberSchema = z.object({
+  memberId: z.string({ message: "Please enter member id" }),
+  name: z.string({ message: "Please enter name" }),
+  mobileNumber: z.string({ message: "Please enter mobile number" }),
+  image_file_path: z.string({ message: "Please upload image" }),
+  address: z.string({ message: "Please enter address" }),
+  expiryDate: z.string({ message: "Please enter expiry date" }),
+});
+
 module.exports = {
   registrationSchema,
   loginSchema,
   resetPasswordSchema,
   forgrtPasswordSchema,
+  addMemberSchema,
+  updateMemberSchema,
 };

@@ -6,6 +6,7 @@ const morgan = require("morgan");
 const userRoutes = require("./routes/user");
 const session = require("express-session");
 const clubRoutes = require("./routes/club");
+const MongoStore = require("connect-mongo");
 
 // Configuring dotenv
 dotenv.config({
@@ -27,6 +28,14 @@ app.use(
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    store: new MongoStore({
+      mongoUrl: process.env.DATABASE_URI,
+      collectionName: process.env.SESSION_COLLECTION_NAME,
+      dbName: process.env.DATABASE_NAME,
+    }),
+    cookie: {
+      maxAge: 1000 * 60 * 60 * 24,
+    },
   })
 );
 app.use(morgan("dev"));
@@ -38,4 +47,8 @@ app.use("/api/v1/club", clubRoutes);
 // Port Running on process.env.PORT
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on port ${process.env.PORT}`);
+});
+
+app.get("/", (req, res) => {
+  res.send(`welcome to the club app, ${req.hostname}!`);
 });
