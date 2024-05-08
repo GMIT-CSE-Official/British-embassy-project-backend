@@ -1,10 +1,8 @@
-const { validate } = require("../models/club-authorization");
 const {
   clubRegistrationSchema,
   clubLoginSchema,
   forgetPasswordSchema,
   resetPasswordSchema,
-  updateClubSchema,
 } = require("../utils/club-zod-schema");
 
 const validateClubRegistration = async (req, res, next) => {

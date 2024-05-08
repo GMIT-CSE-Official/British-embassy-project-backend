@@ -6,7 +6,11 @@ const morgan = require("morgan");
 const userRoutes = require("./routes/user");
 const session = require("express-session");
 const clubRoutes = require("./routes/club");
-const MongoStore = require("connect-mongo");
+const adminRoutes = require("./routes/admin");
+const memberRoutes = require("./routes/member");
+const RedisStore = require("connect-redis").default;
+const { createClient } = require("redis");
+const cors = require("cors");
 
 // Configuring dotenv
 dotenv.config({
@@ -15,6 +19,31 @@ dotenv.config({
 
 // express app
 const app = express();
+
+// Redis Store
+const redisClient = createClient({
+  url: process.env.REDIS_DB_URI,
+});
+
+redisClient.connect();
+
+redisClient.on("error", (err) => {
+  console.log("Server Disconnected socket closed");
+});
+
+redisClient.on("connect", () => {
+  console.log("Redis Connected");
+});
+
+redisClient.on("end", () => {
+  console.log("Redis Disconnected");
+});
+
+const redisStore = new RedisStore({
+  client: redisClient,
+  prefix: "session:",
+  ttl: 86400,
+});
 
 // Database Connection
 connectDB();
@@ -28,21 +57,31 @@ app.use(
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    store: new MongoStore({
-      mongoUrl: process.env.DATABASE_URI,
-      collectionName: process.env.SESSION_COLLECTION_NAME,
-      dbName: process.env.DATABASE_NAME,
-    }),
+    store: redisStore,
     cookie: {
       maxAge: 1000 * 60 * 60 * 24,
     },
   })
 );
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Access-Control-Allow-Origin",
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  })
+);
 app.use(morgan("dev"));
 
 // Routes
-app.use("/api/v1/user", userRoutes);
+app.use("/api/v1/operator", userRoutes);
 app.use("/api/v1/club", clubRoutes);
+app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1/member", memberRoutes);
 
 // Port Running on process.env.PORT
 app.listen(process.env.PORT, () => {

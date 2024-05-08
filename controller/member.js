@@ -42,7 +42,7 @@ exports.addMember = async (req, res) => {
 
 exports.deleteMember = async (req, res) => {
   try {
-    const { memberId } = req.body;
+    const { memberId } = req.params;
     const member = await MemberSchema.findByIdAndDelete(memberId);
     if (!member) {
       return res.status(404).json({
@@ -71,18 +71,11 @@ exports.deleteMember = async (req, res) => {
 
 exports.updateMember = async (req, res) => {
   try {
-    const { memberId } = req.body;
-    const {
-      name,
-      mobileNumber,
-      image_file_path,
-      address,
-      expiryDate,
-      timeStamp,
-    } = req.body;
+    const { memberId } = req.params;
+    const { mobileNumber, image_file_path, address, expiryDate, timeStamp } =
+      req.body;
 
     const member = await MemberSchema.findByIdAndUpdate(memberId, {
-      name,
       mobileNumber,
       image_file_path,
       address,

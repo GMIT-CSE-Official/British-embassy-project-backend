@@ -5,19 +5,22 @@ const ClubAuthorization = new mongoose.Schema({
   username: {
     type: String,
     required: true,
-    unique: true,
   },
   password: {
     type: String,
     required: true,
   },
-  accessKey: {
+  email: {
     type: String,
     required: true,
   },
   role: {
     type: String,
+    enum: ["admin", "club"],
     default: "club",
+  },
+  accessKey: {
+    type: String,
   },
   resetPasswordToken: {
     type: String,
@@ -27,8 +30,13 @@ const ClubAuthorization = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  verified: {
+    type: Boolean,
+    default: false,
+  },
   createdAt: {
     type: Date,
+    expires: 3600,
     default: Date.now(),
   },
 });

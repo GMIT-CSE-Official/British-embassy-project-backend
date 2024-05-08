@@ -25,8 +25,17 @@ const Operators = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["admin", "Operator", "developer"],
-    default: "Operator",
+    default: "operator",
+  },
+  idProof: {
+    idType: {
+      type: String,
+      required: true,
+    },
+    idNumber: {
+      type: String,
+      required: true,
+    },
   },
   resetPasswordToken: String,
   resetPasswordExpire: Date,
