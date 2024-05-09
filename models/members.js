@@ -13,9 +13,13 @@ const memberSchema = new mongoose.Schema({
     min: 10,
     max: 15,
   },
-  image_file_path: {
-    type: String,
-    required: true,
+  image: {
+    url: {
+      type: String,
+    },
+    public_id: {
+      type: String,
+    },
   },
   address: {
     type: String,
@@ -29,7 +33,7 @@ const memberSchema = new mongoose.Schema({
   },
   timeStamp: {
     type: Date,
-    required: true,
+    default: Date.now(),
   },
 });
 

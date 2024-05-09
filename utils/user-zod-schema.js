@@ -29,7 +29,9 @@ const fileSchema = z
 
 const registrationSchema = z.object({
   username: z
-    .string()
+    .string({
+      message: "Username must be atleast 3 characters long",
+    })
     .min(3, {
       message: "Username must be atleast 3 characters long",
     })
@@ -54,14 +56,19 @@ const registrationSchema = z.object({
       message: "Mobile number must be atmost 15 characters long",
     }),
   profileImage: fileSchema,
-  idProof: z.object({
-    idType: z.string({
-      message: "Please enter id type",
-    }),
-    idNumber: z.string({
-      message: "Please enter id number",
-    }),
-  }),
+  idProof: z.object(
+    {
+      idType: z.string({
+        message: "Please enter id type",
+      }),
+      idNumber: z.string({
+        message: "Please enter id number",
+      }),
+    },
+    {
+      message: "Invalid id proof",
+    }
+  ),
 });
 const loginSchema = z.object({
   username: z.string({ message: "Please enter username" }),
@@ -75,15 +82,14 @@ const forgrtPasswordSchema = z.object({
 const resetPasswordSchema = z.object({
   newPassword: z.string({ message: "Please enter new password" }),
   confirmNewPassword: z.string({ message: "Please confirm new password" }),
-  token: z.string({ message: "Invalid token" }),
 });
 
 const addMemberSchema = z.object({
   name: z.string({ message: "Please enter name" }),
   mobileNumber: z.string({ message: "Please enter mobile number" }),
-  image_file_path: z.string({ message: "Please upload image" }),
   address: z.string({ message: "Please enter address" }),
   expiryDate: z.string({ message: "Please enter expiry date" }),
+  image: fileSchema.optional(),
 });
 
 const updateMemberSchema = z.object({

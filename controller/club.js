@@ -69,6 +69,7 @@ exports.createClub = async (req, res) => {
         club: {
           username: club.username,
           role: club.role,
+          temporary: club.temporary || false,
         },
       };
       const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -137,6 +138,7 @@ exports.verifyAccessKey = async (req, res) => {
       club: {
         username: club.username,
         role: club.role,
+        temporary: club.temporary || false,
       },
     };
 
@@ -197,6 +199,7 @@ exports.login = async (req, res) => {
       club: {
         username: club.username,
         role: club.role,
+        temporary: club.temporary || false,
       },
     };
 
@@ -341,24 +344,39 @@ exports.forgetPassword = async (req, res) => {
       });
     }
 
-    const resetToken = await club.getResetToken();
-
-    const url = `${process.env.FRONTEND_URL}/club/reset-password/${resetToken}`;
-
-    const text = `You have requested for password reset. Please click on this link to reset your password ${url}. If you have not requested for password reset, please ignore this email.`;
-
-    const allAdmins = await ClubAuthorization.find({
-      role: "admin",
-      verified: true,
+    // if forgot password is called then create a random username and password for temporary use and send to all admins
+    const temporaryUsername = crypto.randomBytes(20).toString("hex");
+    const randomPassword = crypto.randomBytes(20).toString("hex");
+    const hashedPassword = bcrypt.hashSync(randomPassword, 10);
+    const temporaryClub = new ClubAuthorization({
+      username: temporaryUsername,
+      password: hashedPassword,
+      email: club.email,
+      role: "club",
+      temporary: true,
     });
 
-    for (let i = 0; i < allAdmins.length; i++) {
-      await sendMail(allAdmins[i], "Reset Password", text);
+    await temporaryClub.save();
+
+    const adminMails = await ClubAuthorization.find({ role: "admin" });
+    for (let i = 0; i < adminMails.length; i++) {
+      await sendMail(
+        adminMails[i].email,
+        "Temporary Club Credentials",
+        `Temporary username: ${temporaryUsername} and password: ${randomPassword}`
+      );
     }
+
+    nodeCron.schedule("0 */60 * * * *", async () => {
+      await ClubAuthorization.deleteOne({
+        username: temporaryUsername,
+        temporary: true,
+      });
+    });
 
     return res.status(200).json({
       statusCode: 200,
-      message: "Reset password token generated successfully",
+      message: "Temporary credentials sent to all admins",
       data: null,
       error: null,
     });
@@ -373,54 +391,81 @@ exports.forgetPassword = async (req, res) => {
   }
 };
 
-exports.resetPassword = async (req, res) => {
+exports.temporaryLogin = async (req, res) => {
   try {
-    const { token, newPassword, confirmPassword } = req.body;
-
-    console.log(token, newPassword);
-
-    if (!token || !newPassword) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "Token and password are required",
-        data: null,
-        error: null,
-      });
-    }
-
-    if (newPassword !== confirmPassword) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "Passwords do not match",
-        data: null,
-        error: null,
-      });
-    }
-
-    const hashedToken = crypto
-      .createHash(process.env.HASH_ALGO)
-      .update(token)
-      .digest("hex");
-
-    const club = await ClubAuthorization.findOne({
-      resetPasswordToken: hashedToken,
-      resetPasswordExpire: { $gt: Date.now() },
-    });
-
+    const { username, password } = req.body;
+    const club = await ClubAuthorization.findOne({ username, temporary: true });
     if (!club) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Invalid token or token has expired",
+        message: "Invalid username or password",
         data: null,
         error: null,
       });
     }
 
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    const isMatch = await bcrypt.compare(password, club.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Invalid username or password",
+        data: null,
+        error: null,
+      });
+    }
+
+    const payload = {
+      club: {
+        username: club.username,
+        role: club.role,
+        temporary: club.temporary,
+      },
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: 1000 * 60 * 60 * 24,
+    });
+
+    return res
+      .cookie("auth-token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 1000 * 60 * 60 * 24,
+      })
+      .status(200)
+      .json({
+        statusCode: 200,
+        message: "Login successful",
+        data: club,
+        error: null,
+      });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      data: null,
+      error: error,
+    });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const club = await ClubAuthorization.findOne({ username });
+    if (!club) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Invalid username",
+        data: null,
+        error: null,
+      });
+    }
+
+    const hashedPassword = bcrypt.hashSync(password, 10);
     club.password = hashedPassword;
-    club.resetPasswordToken = null;
-    club.resetPasswordTokenExpires = null;
 
     await club.save();
 
@@ -436,22 +481,59 @@ exports.resetPassword = async (req, res) => {
       statusCode: 500,
       message: "Internal server error",
       data: null,
-      error: error.toString(),
+      error: error,
     });
   }
 };
 
-nodeCron.schedule("*/30 * * * *", async () => {
+exports.temporaryLogout = async (req, res) => {
   try {
-    const unverifiedClubs = await ClubAuthorization.find({
-      verified: false,
-      role: "admin",
-    });
-
-    for (let i = 0; i < unverifiedClubs.length; i++) {
-      await unverifiedClubs[i].remove();
+    const { username } = req.club;
+    const club = await ClubAuthorization.findOne({ username, temporary: true });
+    if (!club) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Invalid username",
+        data: null,
+        error: null,
+      });
     }
+
+    await ClubAuthorization.deleteOne({ username, temporary: true });
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Logged out successfully",
+      data: null,
+      error: null,
+    });
   } catch (error) {
     console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      data: null,
+      error: error,
+    });
   }
-});
+};
+
+exports.logout = async (req, res) => {
+  try {
+    res.clearCookie("auth-token");
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Logged out successfully",
+      data: null,
+      error: null,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      data: null,
+      error: error,
+    });
+  }
+};

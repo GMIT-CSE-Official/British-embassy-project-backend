@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const Node_cache = require("node-cache");
 const { sendMail } = require("../utils/mail-service");
 const crypto = require("crypto");
+const { uploadImage } = require("../utils/cloudinary");
 
 const node_cache = new Node_cache();
 
@@ -109,13 +110,13 @@ exports.getAllOperators = async (req, res) => {
 
 exports.register = async (req, res) => {
   try {
+    const file = req.files;
     const {
       username,
       email,
       password,
       mobileNumber,
       address,
-      profileImage,
       idProof: { idType, idNumber },
     } = req.body;
 
@@ -133,13 +134,70 @@ exports.register = async (req, res) => {
     }
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = bcrypt.hashSync(password, salt);
+
+    if (file && file.profileImage) {
+      const image = await uploadImage({
+        file: file.profileImage,
+        folder: "operators",
+        name: username,
+      });
+
+      if (!image) {
+        return res.status(400).json({
+          statusCode: 400,
+          message: "Image upload failed",
+          exception: null,
+          data: null,
+        });
+      }
+
+      const newUser = await Operators.create({
+        username,
+        password: hashedPassword,
+        mobileNumber,
+        email,
+        address,
+        profileImage: {
+          url: image.url,
+          public_id: image.public_id,
+        },
+        idProof: {
+          idType,
+          idNumber,
+        },
+      });
+
+      const payload = {
+        user: {
+          id: newUser._id,
+          role: newUser.role,
+        },
+      };
+
+      const token = await encryptPayload(payload);
+
+      return res
+        .cookie("user-token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
+          maxAge: 1000 * 60 * 60 * 24,
+        })
+        .status(201)
+        .json({
+          statusCode: 201,
+          message: "User registered successfully",
+          data: newUser,
+          exception: null,
+        });
+    }
+
     const newUser = await Operators.create({
       username,
       password: hashedPassword,
       mobileNumber,
       email,
       address,
-      profileImage,
       idProof: {
         idType,
         idNumber,
@@ -251,7 +309,12 @@ exports.updateOperator = async (req, res) => {
         data: null,
       });
     }
-    const { username, email, mobileNumber, profileImage } = req.body;
+    const {
+      email,
+      mobileNumber,
+      profileImage,
+      idProof: { idType, idNumber },
+    } = req.body;
     const user = await Operators.findById(id);
     if (!user) {
       return res.status(404).json({
@@ -261,11 +324,14 @@ exports.updateOperator = async (req, res) => {
     }
     const hashedPassword = bcrypt.hashSync(req.body.password, 10);
     const updatedUser = await Operators.findByIdAndUpdate(id, {
-      username,
       password: hashedPassword,
       mobileNumber,
       profileImage,
       email,
+      idProof: {
+        idType,
+        idNumber,
+      },
     });
     return res.status(200).json({
       statusCode: 200,
@@ -319,7 +385,15 @@ exports.forgetPassword = async (req, res) => {
 };
 
 exports.resetPassword = async (req, res) => {
-  const { token } = req.body;
+  const { token } = req.params;
+  if (!token) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: "Invalid token",
+      exception: null,
+      data: null,
+    });
+  }
   const hashedToken = crypto
     .createHash(process.env.HASH_ALGO)
     .update(token)
