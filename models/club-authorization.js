@@ -22,15 +22,11 @@ const ClubAuthorization = new mongoose.Schema({
   accessKey: {
     type: String,
   },
-  resetPasswordToken: {
-    type: String,
-    default: null,
-  },
-  resetPasswordExpire: {
-    type: Date,
-    default: null,
-  },
   verified: {
+    type: Boolean,
+    default: false,
+  },
+  temporary: {
     type: Boolean,
     default: false,
   },

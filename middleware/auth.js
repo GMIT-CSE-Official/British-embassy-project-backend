@@ -12,7 +12,6 @@ class Auth {
     this.isOperator = this.isOperator.bind(this);
     this.isDeveloper = this.isDeveloper.bind(this);
     this.isInClub = this.isInClub.bind(this);
-    console.log("Auth Middleware Loaded");
   }
   isAuthenticated(req, res, next) {
     const token = req.cookies["auth-token"];
@@ -80,6 +79,17 @@ class Auth {
     }
     next();
   }
+  isTemporaryAdmin(req, res, next) {
+    if (req.club.role !== this.#ADMIN_ROLE && req.club.temporary === false) {
+      return res.status(401).json({
+        statusCode: 401,
+        message: "Only temporary admin can access this resource",
+        exception: null,
+        data: null,
+      });
+    }
+    next();
+  }
   isInClub(req, res, next) {
     if (!req.club) {
       return res.status(401).json({
@@ -100,7 +110,6 @@ class Auth {
     next();
   }
   isOperator(req, res, next) {
-    console.log(req.user);
     if (!req.user) {
       return res.status(401).json({
         statusCode: 401,

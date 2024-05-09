@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 const crypto = require("crypto");
-const { create } = require("./club-authorization");
 
 const Operators = new mongoose.Schema({
   username: {
@@ -21,7 +20,12 @@ const Operators = new mongoose.Schema({
     required: true,
   },
   profileImage: {
-    type: String,
+    url: {
+      type: String,
+    },
+    public_id: {
+      type: String,
+    },
   },
   role: {
     type: String,

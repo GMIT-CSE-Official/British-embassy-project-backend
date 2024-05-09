@@ -11,10 +11,19 @@ const memberRoutes = require("./routes/member");
 const RedisStore = require("connect-redis").default;
 const { createClient } = require("redis");
 const cors = require("cors");
+const cloudinary = require("cloudinary").v2;
+const fileUpload = require("express-fileupload");
 
 // Configuring dotenv
 dotenv.config({
   path: "./.env",
+});
+
+// Cloudinary Config
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 // express app
@@ -51,6 +60,12 @@ connectDB();
 // Middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(
+  fileUpload({
+    useTempFiles: true,
+    tempFileDir: "/tmp/",
+  })
+);
 app.use(cookieParser());
 app.use(
   session({

@@ -53,7 +53,7 @@ router.put(
   updateOperator
 );
 router.put("/forgot-password", validateForgetPassword, forgetPassword);
-router.put("/reset-password", validateResetPassword, resetPassword);
+router.put("/reset-password/:token", validateResetPassword, resetPassword);
 router.put(
   "/sned-reset-token-again",
   validateForgetPassword,

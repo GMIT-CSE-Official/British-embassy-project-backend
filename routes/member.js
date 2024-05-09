@@ -5,6 +5,7 @@ const {
   deleteMember,
   getAllMembers,
   searchMember,
+  updateImage,
 } = require("../controller/member");
 const {
   isAuthenticated,
@@ -24,16 +25,23 @@ router.post(
   validateAddMember,
   addMember
 );
-router.post(
+router.put(
   "/update-member/:memberId",
   isAuthenticated,
   isInClub,
   isUser,
   isOperator,
-  validateAddMember,
   updateMember
 );
-router.post(
+router.put(
+  "/update-member-image/:memberId",
+  isAuthenticated,
+  isInClub,
+  isUser,
+  isOperator,
+  updateImage
+);
+router.delete(
   "/delete-member/:memberId",
   isAuthenticated,
   isInClub,

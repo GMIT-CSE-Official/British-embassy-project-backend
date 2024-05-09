@@ -5,13 +5,13 @@ const {
   forgetPassword,
   resetPassword,
   verifyAccessKey,
-  getProfile,
+  temporaryLogin,
+  logout,
 } = require("../controller/club");
 const {
   validateClubRegistration,
   validateClubLogin,
   validateForgetPassword,
-  validateResetPassword,
 } = require("../middleware/zod-club-middleware");
 
 const app = Router();
@@ -19,7 +19,7 @@ const app = Router();
 app.post("/create", validateClubRegistration, createClub);
 app.post("/verify-accessKey", verifyAccessKey);
 app.post("/login", validateClubLogin, login);
-app.put("/forget-password", validateForgetPassword, forgetPassword);
-app.put("/reset-password", validateResetPassword, resetPassword);
+app.post("/forget-password", validateForgetPassword, forgetPassword);
+app.post("/temporary-login", validateClubLogin, temporaryLogin);
 
 module.exports = app;
