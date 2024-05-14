@@ -4,7 +4,6 @@ const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { sendMail } = require("../utils/mail-service");
-const nodeCron = require("node-cron");
 const NodeCache = require("node-cache");
 
 const cache = new NodeCache();
@@ -404,15 +403,6 @@ exports.forgetPassword = async (req, res) => {
     }
 
     cache.set(username, true);
-
-    nodeCron.schedule("0 */60 * * * *", async () => {
-      await ClubAuthorization.deleteOne({
-        username: temporaryUsername,
-        password: hashedPassword,
-        temporary: true,
-        role: "admin",
-      });
-    });
 
     return res.status(200).json({
       statusCode: 200,

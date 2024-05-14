@@ -4,7 +4,7 @@ class Auth {
   #ADMIN_ROLE = "admin";
   #OPERATOR_ROLE = "operator";
   #DEVELOPER_ROLE = "developer";
-  #CLUB_ROLE = "club";
+  #CLUB_ROLE = "operator";
   constructor() {
     this.isAuthenticated = this.isAuthenticated.bind(this);
     this.isUser = this.isUser.bind(this);
