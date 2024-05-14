@@ -8,6 +8,7 @@ const session = require("express-session");
 const clubRoutes = require("./routes/club");
 const adminRoutes = require("./routes/admin");
 const memberRoutes = require("./routes/member");
+const walletRoutes = require("./routes/wallet");
 const RedisStore = require("connect-redis").default;
 const { createClient } = require("redis");
 const cors = require("cors");
@@ -97,6 +98,7 @@ app.use("/api/v1/operator", userRoutes);
 app.use("/api/v1/club", clubRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/member", memberRoutes);
+app.use("/api/v1/wallet", walletRoutes);
 
 // Port Running on process.env.PORT
 app.listen(process.env.PORT, () => {

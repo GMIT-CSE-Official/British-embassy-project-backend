@@ -1,6 +1,9 @@
 const mongoose = require("mongoose");
 
 const memberSchema = new mongoose.Schema({
+  id: {
+    type: String,
+  },
   name: {
     type: String,
     required: true,
@@ -26,6 +29,10 @@ const memberSchema = new mongoose.Schema({
     required: true,
     min: 6,
     max: 255,
+  },
+  wallet: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "WalletSchema",
   },
   expiryDate: {
     type: Date,

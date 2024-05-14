@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const crypto = require("crypto");
 
 const ClubAuthorization = new mongoose.Schema({
   username: {
@@ -20,7 +19,8 @@ const ClubAuthorization = new mongoose.Schema({
     default: "club",
   },
   accessKey: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "AccessKey",
   },
   verified: {
     type: Boolean,
@@ -36,16 +36,5 @@ const ClubAuthorization = new mongoose.Schema({
     default: Date.now(),
   },
 });
-
-ClubAuthorization.methods.getResetToken = function () {
-  const resetToken = crypto.randomBytes(20).toString("hex");
-  this.resetPasswordToken = crypto
-    .createHash(process.env.HASH_ALGO)
-    .update(resetToken)
-    .digest("hex");
-  this.resetPasswordExpire = Date.now() + 30 * 60 * 1000;
-  this.save();
-  return resetToken;
-};
 
 module.exports = mongoose.model("ClubAuthorization", ClubAuthorization);
