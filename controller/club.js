@@ -1,4 +1,5 @@
 const ClubAuthorization = require("../models/club-authorization");
+const AccessKey = require("../models/access-key");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -21,7 +22,10 @@ exports.createClub = async (req, res) => {
       });
     }
 
-    const adminMails = await ClubAuthorization.find({ role: "admin" });
+    const adminMails = await ClubAuthorization.find({
+      role: "admin",
+      verified: true,
+    });
     if (role && role.toLowerCase() === "admin" && adminMails.length > 0) {
       for (let i = 0; i < adminMails.length; i++) {
         await sendMail(
@@ -51,10 +55,17 @@ exports.createClub = async (req, res) => {
         }
       );
 
-      club.accessKey = token;
+      const accessKey = new AccessKey({
+        key: token,
+        club: club._id,
+      });
+
+      await accessKey.save();
+
+      club.accessKey = accessKey._id;
     }
 
-    await club.save();
+    await (await club.save()).populate("accessKey");
 
     for (let i = 0; i < adminMails.length; i++) {
       await sendMail(
@@ -93,7 +104,8 @@ exports.createClub = async (req, res) => {
 
     return res.status(201).json({
       statusCode: 201,
-      message: "Club created successfully please wait for verification",
+      message:
+        "Club created successfully please wait for verification and ask admin for access key",
       data: null,
       exception: null,
     });
@@ -120,7 +132,19 @@ exports.verifyAccessKey = async (req, res) => {
         error: null,
       });
 
-    const club = await ClubAuthorization.findOne({ accessKey: OneTimeKey });
+    const accessKey = await AccessKey.findOne({ key: OneTimeKey });
+
+    if (!accessKey) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Invalid access key",
+        data: null,
+        error: null,
+      });
+    }
+
+    const club = await ClubAuthorization.findById(accessKey.club);
+
     if (!club) {
       return res.status(400).json({
         statusCode: 400,
@@ -344,8 +368,17 @@ exports.forgetPassword = async (req, res) => {
       });
     }
 
-    // if forgot password is called then create a random username and password for temporary use and send to all admins
-    const temporaryUsername = crypto.randomBytes(20).toString("hex");
+    if (cache.get(username)) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Temporary password already sent",
+        data: null,
+        error: null,
+      });
+    }
+
+    const temporaryUsername =
+      crypto.randomBytes(10).toString("hex") + "@gmail.com";
     const randomPassword = crypto.randomBytes(20).toString("hex");
     const hashedPassword = bcrypt.hashSync(randomPassword, 10);
     const temporaryClub = new ClubAuthorization({
@@ -366,6 +399,8 @@ exports.forgetPassword = async (req, res) => {
         `Temporary username: ${temporaryUsername} and password: ${randomPassword}`
       );
     }
+
+    cache.set(username, true);
 
     nodeCron.schedule("0 */60 * * * *", async () => {
       await ClubAuthorization.deleteOne({

@@ -6,6 +6,17 @@ exports.addMember = async (req, res) => {
     const file = req.files;
     const { name, mobileNumber, address, expiryDate } = req.body;
 
+    const mobileNumberPattern = /^[0-9]{10}$/;
+
+    if (!mobileNumberPattern.test(mobileNumber)) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Invalid mobile number",
+        exception: null,
+        data: null,
+      });
+    }
+
     const existingUser = await MemberSchema.findOne({ mobileNumber });
     if (existingUser) {
       return res.status(400).json({
@@ -16,8 +27,15 @@ exports.addMember = async (req, res) => {
       });
     }
 
+    const allMembersCount = await MemberSchema.find().countDocuments();
+
+    const timeStamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+
+    const memberId = `BEC${timeStamp}${name}@${allMembersCount + 1}`;
+
     if (!file || !file.image) {
       const member = await MemberSchema.create({
+        id: memberId,
         name,
         mobileNumber,
         address,
