@@ -71,7 +71,7 @@ exports.createClub = async (req, res) => {
       await sendMail(
         adminMails[i].email,
         "Access Key",
-        `Access key for ${username} is ${club.accessKey}`
+        `Access key for ${username} is ${club.accessKey.key}`
       );
     }
 
@@ -385,13 +385,16 @@ exports.forgetPassword = async (req, res) => {
       username: temporaryUsername,
       password: hashedPassword,
       email: club.email,
-      role: "club",
+      role: "admin",
       temporary: true,
     });
 
     await temporaryClub.save();
 
-    const adminMails = await ClubAuthorization.find({ role: "admin" });
+    const adminMails = await ClubAuthorization.find({
+      role: "admin",
+      verified: true,
+    });
     for (let i = 0; i < adminMails.length; i++) {
       await sendMail(
         adminMails[i].email,
