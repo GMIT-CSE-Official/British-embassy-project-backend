@@ -408,7 +408,9 @@ exports.forgetPassword = async (req, res) => {
     nodeCron.schedule("0 */60 * * * *", async () => {
       await ClubAuthorization.deleteOne({
         username: temporaryUsername,
+        password: hashedPassword,
         temporary: true,
+        role: "admin",
       });
     });
 
