@@ -48,12 +48,48 @@ exports.createClub = async (req, res) => {
 
     await (await club.save()).populate("accessKey");
 
+    const html = `
+            <html>
+            <head>
+              <title>Access Key for ${username}</title>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  background-color: #f4f4f4;
+                  margin: 0;
+                  padding: 0;
+                }
+                .container {
+                  max-width: 600px;
+                  margin: 0 auto;
+                  padding: 20px;
+                  background-color: #ffffff;
+                  border-radius: 10px;
+                  box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.1);
+                }
+                h1 {
+                  color: #333333;
+                }
+                p {
+                  color: #666666;
+                  margin-bottom: 20px;
+                }
+              </style>
+            </head>
+            <body>
+              <p>Access key for ${username} is:</p>
+              <p><strong>${club.accessKey.key}</strong></p>
+              <p>Please verify the club and provide the key to the club admin.</p>
+            </body>
+            </html>
+          `;
+
     if (adminMails.length < 0) {
       await sendMail(
         process.env.ADMIN_EMAIL,
         `Access key for ${username}`,
-        `Access key for ${username} is "${club.accessKey.key}" please verify the club and provide the key to the club admin`,
-        `<button onclick="navigator.clipboard.writeText('${club.accessKey.key}')">Copy</button>`
+        null,
+        html
       );
     }
 
@@ -61,8 +97,8 @@ exports.createClub = async (req, res) => {
       await sendMail(
         adminMails[i].email,
         `Access key for ${username}`,
-        `Access key for ${username} is "${club.accessKey.key}" please verify the club and provide the key to the club admin`,
-        `<button onclick="navigator.clipboard.writeText('${club.accessKey.key}')">Copy</button>`
+        null,
+        html
       );
     }
 
@@ -364,13 +400,6 @@ exports.forgetPassword = async (req, res) => {
     }
 
     cache.set(username, true);
-
-    nodeCron.schedule("0 */60 * * * *", async () => {
-      await ClubAuthorization.deleteOne({
-        username: temporaryUsername,
-        temporary: true,
-      });
-    });
 
     return res.status(200).json({
       statusCode: 200,
