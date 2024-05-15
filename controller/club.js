@@ -4,7 +4,6 @@ const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { sendMail } = require("../utils/mail-service");
-const nodeCron = require("node-cron");
 const NodeCache = require("node-cache");
 
 const cache = new NodeCache();
@@ -258,6 +257,7 @@ exports.verifyAccessKey = async (req, res) => {
         username: club.username,
         role: club.role,
         temporary: club.temporary || false,
+        verified: club.verified,
       },
     };
 
@@ -319,6 +319,7 @@ exports.login = async (req, res) => {
         username: club.username,
         role: club.role,
         temporary: club.temporary || false,
+        verified: club.verified,
       },
     };
 
@@ -542,6 +543,7 @@ exports.temporaryLogin = async (req, res) => {
         username: club.username,
         role: club.role,
         temporary: club.temporary,
+        verified: club.verified,
       },
     };
 

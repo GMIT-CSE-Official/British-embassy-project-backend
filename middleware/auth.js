@@ -69,7 +69,10 @@ class Auth {
     }
   }
   isAdmin(req, res, next) {
-    if (req.club.role.toLowerCase() !== this.#ADMIN_ROLE) {
+    if (
+      req.club.role.toLowerCase() !== this.#ADMIN_ROLE &&
+      req.club.verified === false
+    ) {
       return res.status(401).json({
         statusCode: 401,
         message: "Unauthorized access",
@@ -102,7 +105,10 @@ class Auth {
         data: null,
       });
     }
-    if (req.club.role.toLowerCase() !== this.#CLUB_ROLE) {
+    if (
+      req.club.role.toLowerCase() !== this.#CLUB_ROLE &&
+      req.club.verified === false
+    ) {
       return res.status(401).json({
         statusCode: 401,
         message: "Login as operator to access the resource",
