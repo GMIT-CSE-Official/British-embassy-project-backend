@@ -31,6 +31,11 @@ const Operators = new mongoose.Schema({
       type: String,
     },
   },
+  role: {
+    type: String,
+    enum: ["operator"],
+    default: "operator",
+  },
   idProof: {
     idType: {
       type: String,

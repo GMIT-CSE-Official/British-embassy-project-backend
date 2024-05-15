@@ -28,7 +28,6 @@
     "mongoose": "^8.3.2",
     "morgan": "^1.10.0",
     "node-cache": "^5.1.2",
-    "node-cron": "^3.0.3",
     "nodemailer": "^6.9.13",
     "nodemon": "^3.1.0",
     "paseto": "^3.1.4",
