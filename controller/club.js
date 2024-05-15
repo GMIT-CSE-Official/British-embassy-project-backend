@@ -79,7 +79,10 @@ exports.createClub = async (req, res) => {
             <body>
               <p>Access key for ${username} is:</p>
               <p><strong>${club.accessKey.key}</strong></p>
-              <p>Please verify the club and provide the key to the club admin.</p>
+              <P>
+                The user wants to be an ${role} of the club.
+              </P>
+              <p>Please verify the club and provide the key to the user</p>
             </body>
             </html>
           `;
