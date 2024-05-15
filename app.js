@@ -13,6 +13,9 @@ const MongoStore = require("connect-mongo");
 const cors = require("cors");
 const cloudinary = require("cloudinary").v2;
 const fileUpload = require("express-fileupload");
+const nodeCron = require("node-cron");
+const ClubAuthorization = require("./models/club-authorization");
+const cache = require("node-cache");
 
 // Configuring dotenv
 dotenv.config({
@@ -85,4 +88,17 @@ app.listen(process.env.PORT, () => {
 
 app.get("/", (req, res) => {
   res.send(`welcome to the club app, ${req.hostname}!`);
+});
+
+nodeCron.schedule("0 0 * * *", async () => {
+  cache.flushAll();
+  try {
+    console.log("Deleting temporary club authorizations and unverified clubs");
+    await ClubAuthorization.deleteMany({ temporary: true });
+    await ClubAuthorization.deleteMany({
+      verified: false,
+    });
+  } catch (error) {
+    console.log(error);
+  }
 });

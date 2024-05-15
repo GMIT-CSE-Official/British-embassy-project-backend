@@ -123,6 +123,99 @@ exports.createClub = async (req, res) => {
   }
 };
 
+exports.resendAccessKey = async (req, res) => {
+  try {
+    const { username } = req.body;
+
+    const club = await ClubAuthorization.findOne({ username });
+
+    if (!club) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Club not found",
+        data: null,
+        error: null,
+      });
+    }
+
+    const adminMails = await ClubAuthorization.find({
+      role: "admin",
+      verified: true,
+    });
+
+    const html = `
+            <html>
+            <head>
+              <title>Access Key for ${username}</title>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  background-color: #f4f4f4;
+                  margin: 0;
+                  padding: 0;
+                }
+                .container {
+                  max-width: 600px;
+                  margin: 0 auto;
+                  padding: 20px;
+                  background-color: #ffffff;
+                  border-radius: 10px;
+                  box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.1);
+                }
+                h1 {
+                  color: #333333;
+                }
+                p {
+                  color: #666666;
+                  margin-bottom: 20px;
+                }
+              </style>
+            </head>
+            <body>
+              <p>Access key for ${username} is:</p>
+              <p><strong>${club.accessKey.key}</strong></p>
+              <P>
+                The user wants to be an ${club.role} of the club.
+              </P>
+              <p>Please verify the club and provide the key to the user</p>
+            </body>
+            </html>
+          `;
+
+    if (adminMails.length < 0) {
+      await sendMail(
+        process.env.ADMIN_EMAIL,
+        `Access key for ${username}`,
+        null,
+        html
+      );
+    }
+
+    for (let i = 0; i < adminMails.length; i++) {
+      await sendMail(
+        adminMails[i].email,
+        `Access key for ${username}`,
+        null,
+        html
+      );
+    }
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Access key sent successfully",
+      data: null,
+      error: null,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      data: null,
+    });
+  }
+};
+
 exports.verifyAccessKey = async (req, res) => {
   try {
     const { OneTimeKey } = req.body;
@@ -567,15 +660,3 @@ exports.logout = async (req, res) => {
     });
   }
 };
-
-nodeCron.schedule("0 */60 * * * *", async () => {
-  cache.flushAll();
-  try {
-    await ClubAuthorization.deleteMany({ temporary: true });
-    await ClubAuthorization.deleteMany({
-      verified: false,
-    });
-  } catch (error) {
-    console.log(error);
-  }
-});
