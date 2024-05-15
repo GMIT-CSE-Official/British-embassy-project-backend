@@ -480,7 +480,7 @@ exports.forgetPassword = async (req, res) => {
       username: temporaryUsername,
       password: hashedPassword,
       email: club.email,
-      role: "club",
+      role: "admin",
       temporary: true,
     });
 
