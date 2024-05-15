@@ -1,6 +1,6 @@
 const nodemailer = require("nodemailer");
 
-exports.sendMail = async (to, subject, text) => {
+exports.sendMail = async (to, subject, text, html) => {
   try {
     const transport = nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
@@ -17,6 +17,7 @@ exports.sendMail = async (to, subject, text) => {
       to,
       subject,
       text,
+      html,
     });
     return info;
   } catch (error) {

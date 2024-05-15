@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { sendMail } = require("../utils/mail-service");
+const nodeCron = require("node-cron");
 const NodeCache = require("node-cache");
 
 const cache = new NodeCache();
@@ -25,80 +26,44 @@ exports.createClub = async (req, res) => {
       role: "admin",
       verified: true,
     });
-    if (role && role.toLowerCase() === "admin" && adminMails.length > 0) {
-      for (let i = 0; i < adminMails.length; i++) {
-        await sendMail(
-          adminMails[i].email,
-          "New Club Registration",
-          `A new club with username <b>${username}</b> has registered.He/She wants to be an admin. Please verify.`
-        );
-      }
-    }
 
     const hashedPassword = bcrypt.hashSync(password, 10);
     const club = new ClubAuthorization({
       username,
       password: hashedPassword,
       email,
+      role,
     });
 
-    if (role === "admin") {
-      const token = jwt.sign(
-        {
-          username,
-          role,
-        },
-        process.env.JWT_SECRET,
-        {
-          expiresIn: 1000 * 60 * 60 * 24,
-        }
-      );
+    const token = crypto.randomBytes(12).toString("hex");
 
-      const accessKey = new AccessKey({
-        key: token,
-        club: club._id,
-      });
+    const accessKey = new AccessKey({
+      key: token,
+      club: club._id,
+    });
 
-      await accessKey.save();
+    await accessKey.save();
 
-      club.accessKey = accessKey._id;
-    }
+    club.accessKey = accessKey._id;
 
     await (await club.save()).populate("accessKey");
+
+    if (adminMails.length < 0) {
+      await sendMail(
+        process.env.ADMIN_EMAIL,
+        `Access key for ${username}`,
+        `Access key for ${username} is "${club.accessKey.key}" please verify the club and provide the key to the club admin`,
+        `<button onclick="navigator.clipboard.writeText('${club.accessKey.key}')">Copy</button>`
+      );
+    }
 
     for (let i = 0; i < adminMails.length; i++) {
       await sendMail(
         adminMails[i].email,
-        "Access Key",
-        `Access key for ${username} is ${club.accessKey.key}`
+        `Access key for ${username}`,
+        `Access key for ${username} is "${club.accessKey.key}" please verify the club and provide the key to the club admin`,
+        `<button onclick="navigator.clipboard.writeText('${club.accessKey.key}')">Copy</button>`
       );
-    }
-
-    if (!role || role.toLowerCase() !== "admin") {
-      const payload = {
-        club: {
-          username: club.username,
-          role: club.role,
-          temporary: club.temporary || false,
-        },
-      };
-      const token = jwt.sign(payload, process.env.JWT_SECRET, {
-        expiresIn: 1000 * 60 * 60 * 24,
-      });
-      return res
-        .cookie("auth-token", token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "strict",
-          maxAge: 1000 * 60 * 60 * 24,
-        })
-        .status(201)
-        .json({
-          statusCode: 201,
-          message: "Club created successfully",
-          data: null,
-          exception: null,
-        });
     }
 
     return res.status(201).json({
@@ -153,7 +118,6 @@ exports.verifyAccessKey = async (req, res) => {
       });
     }
 
-    club.role = "admin";
     club.verified = true;
     await club.save();
 
@@ -384,16 +348,13 @@ exports.forgetPassword = async (req, res) => {
       username: temporaryUsername,
       password: hashedPassword,
       email: club.email,
-      role: "admin",
+      role: "club",
       temporary: true,
     });
 
     await temporaryClub.save();
 
-    const adminMails = await ClubAuthorization.find({
-      role: "admin",
-      verified: true,
-    });
+    const adminMails = await ClubAuthorization.find({ role: "admin" });
     for (let i = 0; i < adminMails.length; i++) {
       await sendMail(
         adminMails[i].email,
@@ -403,6 +364,13 @@ exports.forgetPassword = async (req, res) => {
     }
 
     cache.set(username, true);
+
+    nodeCron.schedule("0 */60 * * * *", async () => {
+      await ClubAuthorization.deleteOne({
+        username: temporaryUsername,
+        temporary: true,
+      });
+    });
 
     return res.status(200).json({
       statusCode: 200,
@@ -567,3 +535,15 @@ exports.logout = async (req, res) => {
     });
   }
 };
+
+nodeCron.schedule("0 */60 * * * *", async () => {
+  cache.flushAll();
+  try {
+    await ClubAuthorization.deleteMany({ temporary: true });
+    await ClubAuthorization.deleteMany({
+      verified: false,
+    });
+  } catch (error) {
+    console.log(error);
+  }
+});

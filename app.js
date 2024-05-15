@@ -9,10 +9,10 @@ const clubRoutes = require("./routes/club");
 const adminRoutes = require("./routes/admin");
 const memberRoutes = require("./routes/member");
 const walletRoutes = require("./routes/wallet");
+const MongoStore = require("connect-mongo");
 const cors = require("cors");
 const cloudinary = require("cloudinary").v2;
 const fileUpload = require("express-fileupload");
-const MongoStore = require("connect-mongo");
 
 // Configuring dotenv
 dotenv.config({
@@ -47,10 +47,10 @@ app.use(
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    store: new MongoStore({
+    store: MongoStore.create({
       mongoUrl: process.env.DATABASE_URI,
+      dbName: process.env.DATABASE_NAME,
       collectionName: "sessions",
-      ttl: 24 * 60 * 60,
     }),
     cookie: {
       maxAge: 1000 * 60 * 60 * 24,
