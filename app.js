@@ -13,6 +13,11 @@ const cors = require("cors");
 const cloudinary = require("cloudinary").v2;
 const fileUpload = require("express-fileupload");
 const MongoStore = require("connect-mongo");
+const cron = require("node-cron");
+const {
+  deleteUnverifiedUsers,
+  removeTemporaryAdmins,
+} = require("./controller/club");
 
 // Configuring dotenv
 dotenv.config({
@@ -80,4 +85,9 @@ app.listen(process.env.PORT, () => {
 
 app.get("/", (req, res) => {
   res.send(`welcome to the club app, ${req.hostname}!`);
+});
+
+cron.schedule("0 3 * * *", async () => {
+  await deleteUnverifiedUsers();
+  await removeTemporaryAdmins();
 });
