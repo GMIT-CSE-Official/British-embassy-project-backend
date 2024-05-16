@@ -313,7 +313,8 @@ exports.updateOperator = async (req, res) => {
       email,
       mobileNumber,
       profileImage,
-      idProof: { idType, idNumber },
+      idType,
+      idNumber
     } = req.body;
     const user = await Operators.findById(id);
     if (!user) {
