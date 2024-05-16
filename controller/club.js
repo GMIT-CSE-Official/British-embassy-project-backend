@@ -86,7 +86,7 @@ exports.createClub = async (req, res) => {
             </html>
           `;
 
-    if (adminMails.length < 0) {
+    if (adminMails.length < 1) {
       await sendMail(
         process.env.ADMIN_EMAIL,
         `Access key for ${username}`,
