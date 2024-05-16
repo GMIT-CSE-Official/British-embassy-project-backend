@@ -83,7 +83,7 @@ exports.createClub = async (req, res) => {
     <p>The user wants to be an ${role} of the club.</p>
     <p>Please verify the club and provide the key to the user</p>
   </body>
-</html>`
+</html>`;
 
     if (adminMails.length < 1) {
       await sendMail(
@@ -303,6 +303,15 @@ exports.login = async (req, res) => {
       });
     }
 
+    if (!club.verified) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Please verify your account first",
+        data: null,
+        error: null,
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, club.password);
     if (!isMatch) {
       return res.status(400).json({
@@ -367,15 +376,15 @@ exports.updateClub = async (req, res) => {
 
     const { newPassword, newUsername } = req.body;
 
-      if(newPassword) {
+    if (newPassword) {
       const hashedPassword = bcrypt.hashSync(newPassword, 10);
       club.password = hashedPassword;
     }
 
-    if(newUsername){
+    if (newUsername) {
       club.username = newUsername;
     }
-    
+
     await club.save();
 
     const payload = {
@@ -387,15 +396,9 @@ exports.updateClub = async (req, res) => {
       },
     };
 
-
-    const newToken = jwt.sign(
-      payload,
-      process.env.JWT_SECRET,
-      {
-        expiresIn: 1000 * 60 * 60 * 24,
-      }
-    );
-
+    const newToken = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: 1000 * 60 * 60 * 24,
+    });
 
     return res
       .cookie("auth-token", newToken, {
@@ -695,12 +698,15 @@ exports.getAllOperator = async (req, res) => {
       error: error,
     });
   }
-}
+};
 
 exports.removeOperator = async (req, res) => {
   try {
     const { operatorId } = req.params;
-    const isOperator  = await ClubAuthorization.findOne({ _id: operatorId, role: "operator" });
+    const isOperator = await ClubAuthorization.findOne({
+      _id: operatorId,
+      role: "operator",
+    });
 
     if (!isOperator) {
       return res.status(400).json({
@@ -710,8 +716,10 @@ exports.removeOperator = async (req, res) => {
         error: null,
       });
     }
-    
-    const operator = await ClubAuthorization.findByIdAndDelete({ _id: operatorId });
+
+    const operator = await ClubAuthorization.findByIdAndDelete({
+      _id: operatorId,
+    });
     if (!operator) {
       return res.status(400).json({
         statusCode: 400,
@@ -727,8 +735,7 @@ exports.removeOperator = async (req, res) => {
       data: null,
       error: null,
     });
-  }
-  catch (error) {
+  } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
@@ -737,12 +744,12 @@ exports.removeOperator = async (req, res) => {
       error: error,
     });
   }
-}
+};
 
 exports.changeRole = async (req, res) => {
   try {
     const { username, role } = req.body;
-    const club = await ClubAuthorization.findOne({ username }); 
+    const club = await ClubAuthorization.findOne({ username });
     if (!club) {
       return res.status(400).json({
         statusCode: 400,
@@ -762,8 +769,7 @@ exports.changeRole = async (req, res) => {
       data: club,
       error: null,
     });
-  }
-  catch (error) {
+  } catch (error) {
     console.error(error);
     return res.status(500).json({
       statusCode: 500,
@@ -772,4 +778,26 @@ exports.changeRole = async (req, res) => {
       error: error,
     });
   }
-}
+};
+
+exports.deleteUnverifiedClubs = async (req, res) => {
+  try {
+    console.log("Deleting unverified clubs");
+    const deletedClubs = await ClubAuthorization.deleteMany({
+      verified: false,
+      temporary: false,
+    });
+    await AccessKey.deleteMany({ club: { $in: deletedClubs } });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+exports.removeTemporaryAdmins = async (req, res) => {
+  try {
+    console.log("Deleting temporary admins");
+    await ClubAuthorization.deleteMany({ temporary: true, role: "admin" });
+  } catch (error) {
+    console.log(error);
+  }
+};
