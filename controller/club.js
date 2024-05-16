@@ -47,44 +47,43 @@ exports.createClub = async (req, res) => {
 
     await (await club.save()).populate("accessKey");
 
-    const html = `
-            <html>
-            <head>
-              <title>Access Key for ${username}</title>
-              <style>
-                body {
-                  font-family: Arial, sans-serif;
-                  background-color: #f4f4f4;
-                  margin: 0;
-                  padding: 0;
-                }
-                .container {
-                  max-width: 600px;
-                  margin: 0 auto;
-                  padding: 20px;
-                  background-color: #ffffff;
-                  border-radius: 10px;
-                  box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.1);
-                }
-                h1 {
-                  color: #333333;
-                }
-                p {
-                  color: #666666;
-                  margin-bottom: 20px;
-                }
-              </style>
-            </head>
-            <body>
-              <p>Access key for ${username} is:</p>
-              <p><strong>${club.accessKey.key}</strong></p>
-              <P>
-                The user wants to be an ${role} of the club.
-              </P>
-              <p>Please verify the club and provide the key to the user</p>
-            </body>
-            </html>
-          `;
+    const html = `<html lang="en">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Club Authorization</title>
+  <head>
+    <title>Access Key for ${username}</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #ffffff;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #333333;
+      }
+      p {
+        color: #666666;
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <p>Access key for ${username} is:</p>
+    <p><strong>${club.accessKey.key}</strong></p>
+    <p>The user wants to be an ${role} of the club.</p>
+    <p>Please verify the club and provide the key to the user</p>
+  </body>
+</html>`
 
     if (adminMails.length < 1) {
       await sendMail(
@@ -367,21 +366,36 @@ exports.updateClub = async (req, res) => {
     }
 
     const { newPassword, newUsername } = req.body;
-    const newToken = jwt.sign(
-      {
-        username: newUsername,
+
+      if(newPassword) {
+      const hashedPassword = bcrypt.hashSync(newPassword, 10);
+      club.password = hashedPassword;
+    }
+
+    if(newUsername){
+      club.username = newUsername;
+    }
+    
+    await club.save();
+
+    const payload = {
+      club: {
+        username: club.username,
         role: club.role,
+        temporary: club.temporary,
+        verified: club.verified,
       },
+    };
+
+
+    const newToken = jwt.sign(
+      payload,
       process.env.JWT_SECRET,
       {
         expiresIn: 1000 * 60 * 60 * 24,
       }
     );
 
-    const hashedPassword = bcrypt.hashSync(newPassword, 10);
-    club.password = hashedPassword;
-    club.username = newUsername;
-    await club.save();
 
     return res
       .cookie("auth-token", newToken, {
@@ -662,3 +676,100 @@ exports.logout = async (req, res) => {
     });
   }
 };
+
+exports.getAllOperator = async (req, res) => {
+  try {
+    const operators = await ClubAuthorization.find({ role: "operator" });
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Operators fetched successfully",
+      data: operators,
+      error: null,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      data: null,
+      error: error,
+    });
+  }
+}
+
+exports.removeOperator = async (req, res) => {
+  try {
+    const { operatorId } = req.params;
+    const isOperator  = await ClubAuthorization.findOne({ _id: operatorId, role: "operator" });
+
+    if (!isOperator) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Operator not found",
+        data: null,
+        error: null,
+      });
+    }
+    
+    const operator = await ClubAuthorization.findByIdAndDelete({ _id: operatorId });
+    if (!operator) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Operator not found",
+        data: null,
+        error: null,
+      });
+    }
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Operator removed successfully",
+      data: null,
+      error: null,
+    });
+  }
+  catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      data: null,
+      error: error,
+    });
+  }
+}
+
+exports.changeRole = async (req, res) => {
+  try {
+    const { username, role } = req.body;
+    const club = await ClubAuthorization.findOne({ username }); 
+    if (!club) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Club not found",
+        data: null,
+        error: null,
+      });
+    }
+
+    club.role = role;
+
+    await club.save();
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Role updated successfully",
+      data: club,
+      error: null,
+    });
+  }
+  catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      data: null,
+      error: error,
+    });
+  }
+}

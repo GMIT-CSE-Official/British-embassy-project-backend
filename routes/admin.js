@@ -4,6 +4,9 @@ const {
   updateClub,
   resetPassword,
   logout,
+  changeRole,
+  getAllOperator,
+  removeOperator,
 } = require("../controller/club");
 
 const {
@@ -26,5 +29,8 @@ app.put(
 );
 app.get("/logout", isAuthenticated, isAdmin, logout);
 app.get("/temporary-logout", isAuthenticated, isTemporaryAdmin, logout);
+app.get("/get-all-operator", isAuthenticated, isAdmin, getAllOperator);
+app.post("/change-role", isAuthenticated, isAdmin, changeRole);
+app.delete("/delete-operator/:operatorId", isAuthenticated, isAdmin,removeOperator )
 
 module.exports = app;

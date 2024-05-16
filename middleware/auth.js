@@ -127,7 +127,10 @@ class Auth {
         data: null,
       });
     }
-    if (req.user.role.toLowerCase() !== this.#OPERATOR_ROLE) {
+    if (
+      req.user.role.toLowerCase() !== this.#OPERATOR_ROLE &&
+      req.user.verified === false
+    ) {
       return res.status(401).json({
         statusCode: 401,
         message: "Unauthorized access",
@@ -146,7 +149,10 @@ class Auth {
         data: null,
       });
     }
-    if (req.user.role.toLowerCase() !== this.#DEVELOPER_ROLE) {
+    if (
+      req.user.role.toLowerCase() !== this.#DEVELOPER_ROLE &&
+      req.user.verified === false
+    ) {
       return res.status(401).json({
         statusCode: 401,
         message: "Unauthorized access",
