@@ -59,6 +59,6 @@ router.put(
   validateForgetPassword,
   sendResetTokenAgain
 );
-router.get("/logout", isAuthenticated, logout);
+router.get("/logout", isAuthenticated,isInClub,isUser,isOperator,logout);
 
 module.exports = router;

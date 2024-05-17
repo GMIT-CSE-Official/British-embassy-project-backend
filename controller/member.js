@@ -55,11 +55,11 @@ exports.addMember = async (req, res) => {
       name,
     });
 
-    if (!image) {
+    if (image.error) {
       return res.status(400).json({
         statusCode: 400,
         message: "Image not uploaded",
-        exception: null,
+        exception: image.error,
         data: null,
       });
     }
@@ -217,7 +217,6 @@ exports.updateMember = async (req, res) => {
 exports.getAllMembers = async (req, res) => {
   try {
     const { page, limit } = req.query;
-    console.log(page, limit);
     const members = await MemberSchema.find()
       .skip((page - 1) * limit)
       .limit(limit);
