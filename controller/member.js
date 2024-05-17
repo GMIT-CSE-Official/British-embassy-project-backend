@@ -29,13 +29,13 @@ exports.addMember = async (req, res) => {
 
     const allMembersCount = await MemberSchema.find().countDocuments();
 
-    const timeStamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const timeStamp = await new Date().toISOString().slice(0, 10).replace(/-/g, "");
 
-    const memberId = `BEC${timeStamp}${name}@${allMembersCount + 1}`;
+    const memberId = await `BEC${timeStamp}${name}@${allMembersCount + 1}`;
 
     if (!file || !file.image) {
       const member = await MemberSchema.create({
-        id: memberId,
+        _id: memberId,
         name,
         mobileNumber,
         address,
@@ -74,6 +74,7 @@ exports.addMember = async (req, res) => {
     }
 
     const member = await MemberSchema.create({
+      _id: memberId,
       name,
       mobileNumber,
       image,
