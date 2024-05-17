@@ -19,7 +19,7 @@ exports.uploadImage = async ({ file, folder = "club", name = "" }) => {
     };
   } catch (error) {
     console.log(error);
-    return null;
+    return {error: error};
   }
 };
 
