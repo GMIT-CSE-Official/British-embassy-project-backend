@@ -15,7 +15,8 @@ const ClubAuthorization = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["admin", "operator", "developer"],
+    enum: ["admin", "operator", "developer", "none"],
+    default: "none",
   },
   accessKey: {
     type: mongoose.Schema.Types.ObjectId,

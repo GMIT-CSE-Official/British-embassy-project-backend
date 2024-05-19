@@ -3,9 +3,9 @@ const {
   addMember,
   updateMember,
   deleteMember,
-  getAllMembers,
-  searchMember,
   updateImage,
+  getMembers,
+  addMemberImage,
 } = require("../controller/member");
 const {
   isAuthenticated,
@@ -50,20 +50,20 @@ router.delete(
   deleteMember
 );
 router.get(
-  "/all-members",
+  "/get-all-members",
   isAuthenticated,
   isInClub,
   isUser,
   isOperator,
-  getAllMembers
+  getMembers
 );
-router.get(
-  "/search-member/:key",
+router.post(
+  "/add-member-image/:memberId",
   isAuthenticated,
   isInClub,
   isUser,
   isOperator,
-  searchMember
+  addMemberImage
 );
 
 module.exports = router;
