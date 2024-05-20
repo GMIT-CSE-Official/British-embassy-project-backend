@@ -10,7 +10,7 @@ const cache = new NodeCache();
 
 exports.createClub = async (req, res) => {
   try {
-    const { username, password, email, role } = req.body;
+    const { username, password, email } = req.body;
 
     const existingClub = await ClubAuthorization.findOne({ username });
     if (existingClub) {
@@ -125,7 +125,7 @@ exports.resendAccessKey = async (req, res) => {
   try {
     const { username } = req.body;
 
-    const club = await ClubAuthorization.findOne({ username });
+    const club = await ClubAuthorization.findOne({ username: username,});
 
     if (!club) {
       return res.status(400).json({
@@ -216,7 +216,7 @@ exports.resendAccessKey = async (req, res) => {
 
 exports.verifyAccessKey = async (req, res) => {
   try {
-    const { OneTimeKey } = req.body;
+    const { OneTimeKey,role } = req.body;
 
     if (!OneTimeKey)
       return res.status(400).json({
@@ -226,7 +226,7 @@ exports.verifyAccessKey = async (req, res) => {
         error: null,
       });
 
-    const accessKey = await AccessKey.findOne({ key: OneTimeKey });
+    const accessKey = await AccessKey.findOne({ key: OneTimeKey ,role:role });
 
     if (!accessKey) {
       return res.status(400).json({
@@ -509,7 +509,39 @@ exports.forgetPassword = async (req, res) => {
       await sendMail(
         adminMails[i].email,
         "Temporary Club Credentials",
-        `Temporary username: ${temporaryUsername} and password: ${randomPassword}`
+        null,
+        `
+          <html>
+          <head>
+          <title>Temporary Club Credentials</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background-color: #f4f4f4;
+              margin: 0;
+              padding: 0;
+            }
+            .container {
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+              background-color: #ffffff;
+              border-radius: 10px;
+              box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.1);
+            }
+            h1 {
+              color: #333333;
+            }
+            p {
+              color: #666666;
+              margin-bottom: 20px;
+            }
+          </head><body>
+          <p>Temporary username: ${temporaryUsername}</p>
+          <p>Temporary password: ${randomPassword}</p>
+          <p>Temporary username and password are valid for 24 hours</p>
+          </body></html>
+        `
       );
     }
 

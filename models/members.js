@@ -30,13 +30,27 @@ const memberSchema = new mongoose.Schema({
     min: 6,
     max: 255,
   },
+  bloodGroup: {
+    type: String,
+    required: true,
+    min: 2,
+    max: 5,
+  },
+  nationality: {
+    type: String,
+    required: true,
+    min: 4,
+    max: 20,
+  },
+  organization: {
+    type: String,
+    required: true,
+    min: 4,
+    max: 255,
+  },
   wallet: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "WalletSchema",
-  },
-  expiryDate: {
-    type: Date,
-    required: true,
   },
   timeStamp: {
     type: Date,
