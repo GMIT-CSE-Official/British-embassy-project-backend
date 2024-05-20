@@ -14,7 +14,7 @@ const {
 } = require("../controller/wallet.js");
 
 router.post("/add", isAuthenticated, isInClub, isUser, isOperator, addWallet);
-router.get("/get", isAuthenticated, isInClub, isUser, isOperator, getWallet);
+router.get("/get/:memberId", isAuthenticated, isInClub, isUser, isOperator, getWallet);
 router.post(
   "/addTransaction",
   isAuthenticated,

@@ -71,7 +71,7 @@ exports.addWallet = async (req, res) => {
 
     await member.save();
 
-    cache.set(wallet._id, wallet);
+    cache.set(wallet._id.toHexString(), wallet);
 
     return res.status(200).json({
       statusCode: 200,
@@ -153,7 +153,7 @@ exports.addTransaction = async (req, res) => {
       });
     }
 
-    if (type !== "issue" || type !== "receive") {
+    if (type !== "issue" && type !== "receive") {
       return res.status(400).json({
         statusCode: 400,
         message: "Invalid transaction type",

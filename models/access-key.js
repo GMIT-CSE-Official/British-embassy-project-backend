@@ -15,7 +15,9 @@ const accessKeySchema = new mongoose.Schema({
   },
   expiryTime: {
     type: Date,
-    default: Date.now() + 60 * 1000,
+    default:  function() {
+      return Date.now() + 60 * 1000;
+    },
   },
   timestamps: {
     type: Date,

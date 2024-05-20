@@ -5,7 +5,7 @@ const { MemberFilter } = require("../utils/filters");
 exports.addMember = async (req, res) => {
   try {
     const file = req.files;
-    const { name, mobileNumber, address, expiryDate, bloodGroup, nationality, organization } = req.body;
+    const { name, mobileNumber, address, expiryDate, bloodGroup, organization } = req.body;
 
     const mobileNumberPattern = /^[0-9]{10}$/;
 
@@ -44,7 +44,6 @@ exports.addMember = async (req, res) => {
       address,
       expiryDate,
       bloodGroup,
-      nationality,
       organization
     });
     return res.status(201).json({
@@ -98,7 +97,7 @@ exports.updateMember = async (req, res) => {
   try {
     const { memberId } = req.params;
     const file = req.files;
-    const { mobileNumber, address, expiryDate, timeStamp } = req.body;
+    const { mobileNumber, bloodGroup, organization, address, expiryDate, timeStamp } = req.body;
 
     const memberData = await MemberSchema.findById(memberId);
 
@@ -131,17 +130,16 @@ exports.updateMember = async (req, res) => {
     }
 
     const member = await MemberSchema.findByIdAndUpdate(memberId, {
-      mobileNumber,
-      address,
-      expiryDate,
-      timeStamp,
+      mobileNumber: mobileNumber? mobileNumber : memberData.mobileNumber,
+      address: address? address : memberData.address,
+      expiryDate: expiryDate? expiryDate : memberData.expiryDate,
+      timeStamp: timeStamp? timeStamp : memberData.timeStamp,
       image: {
-        url: image.url,
-        public_id: image.public_id,
+        url: image.url? image.url : memberData.image.url,
+        public_id: image.public_id? image.public_id : memberData.image.public_id,
       },
-      bloodGroup,
-      nationality,
-      organization
+      bloodGroup: bloodGroup? bloodGroup : memberData.bloodGroup,
+      organization: organization? organization : memberData.organization
     });
 
     if (!member) {

@@ -420,6 +420,17 @@ exports.updateClub = async (req, res) => {
     }
 
     const { newPassword, newUsername } = req.body;
+    
+    const existingUsername = await ClubAuthorization.findOne({ username: newUsername }); 
+
+    if (existingUsername && newUsername !== username) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Username already exists",
+        data: null,
+        error: null,
+      });
+    }
 
     if (newPassword) {
       const hashedPassword = bcrypt.hashSync(newPassword, 10);

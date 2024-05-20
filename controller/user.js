@@ -364,9 +364,13 @@ exports.updateOperator = async (req, res) => {
         message: "User not found",
       });
     }
-    const hashedPassword = bcrypt.hashSync(req.body.password, 10);
+    const hashedPassword = null;
+    if(req.body.password){
+      hashedPassword = bcrypt.hashSync(req.body.password, 10);
+    }
+    
     const updatedUser = await Operators.findByIdAndUpdate(id, {
-      password: hashedPassword,
+      password: hashedPassword? hashedPassword : user.password,
       mobileNumber,
       profileImage,
       email,
