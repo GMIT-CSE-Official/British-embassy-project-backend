@@ -80,7 +80,8 @@ class MemberFilter {
       .model("MemberSchema")
       .find(this.queryString.sort ? this.queryString : {})
       .sort(this.queryString.sort)
-      .skip(this.pagination.skip);
+      .skip(this.pagination.skip)
+      .populate("wallet");
     return members;
   }
 }

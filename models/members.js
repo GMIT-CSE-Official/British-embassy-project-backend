@@ -16,6 +16,11 @@ const memberSchema = new mongoose.Schema({
     min: 10,
     max: 15,
   },
+  email: {
+    type: String,
+    min: 6,
+    max: 255,
+  },
   image: {
     url: {
       type: String,
@@ -29,6 +34,16 @@ const memberSchema = new mongoose.Schema({
     required: true,
     min: 6,
     max: 255,
+  },
+  idProof: {
+    idType: {
+      type: String,
+      required: true,
+    },
+    idNumber: {
+      type: String,
+      required: true,
+    },
   },
   bloodGroup: {
     type: String,
@@ -47,6 +62,15 @@ const memberSchema = new mongoose.Schema({
   timeStamp: {
     type: Date,
     default: Date.now(),
+  },
+  expiryTime: {
+    type: Date,
+    required: true,
+    default: Date.now() + 1000 * 60 * 60 * 24 * 365,
+  },
+  expired: {
+    type: Boolean,
+    default: false,
   },
 });
 

@@ -16,6 +16,7 @@ const {
   validateLogin,
   validateForgetPassword,
   validateResetPassword,
+  validateChangePassword,
 } = require("../middleware/zod-user-middleware");
 
 const {
@@ -66,6 +67,8 @@ router.put(
   validateForgetPassword,
   sendResetTokenAgain
 );
+router.patch("/change-password", isAuthenticated, isInClub, isUser, isOperator,validateChangePassword, changePassword);
 router.get("/logout", isAuthenticated, isInClub, isUser, isOperator, logout);
+
 
 module.exports = router;

@@ -7,6 +7,7 @@ const {
   changeRole,
   getAllOperator,
   removeOperator,
+  changePassword,
 } = require("../controller/club");
 
 const {
@@ -14,7 +15,7 @@ const {
   isAdmin,
   isTemporaryAdmin,
 } = require("../middleware/auth");
-const { validateResetPassword } = require("../middleware/zod-user-middleware");
+const { validateResetPassword, validateChangePassword } = require("../middleware/zod-user-middleware");
 
 const app = Router();
 
@@ -37,5 +38,6 @@ app.delete(
   isAdmin,
   removeOperator
 );
+app.patch("/change-password", isAuthenticated, isAdmin,validateChangePassword, changePassword);
 
 module.exports = app;

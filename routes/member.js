@@ -25,6 +25,15 @@ router.post(
   validateAddMember,
   addMember
 );
+router.get(
+  "/get-member/:memberId",
+  isAuthenticated,
+  isInClub,
+  isUser,
+  isOperator,
+  getMembers
+);
+
 router.put(
   "/update-member/:memberId",
   isAuthenticated,

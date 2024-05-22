@@ -565,39 +565,7 @@ exports.forgetPassword = async (req, res) => {
       await sendMail(
         adminMails[i].email,
         "Temporary Club Credentials",
-        null,
-        `
-          <html>
-          <head>
-          <title>Temporary Club Credentials</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              background-color: #f4f4f4;
-              margin: 0;
-              padding: 0;
-            }
-            .container {
-              max-width: 600px;
-              margin: 0 auto;
-              padding: 20px;
-              background-color: #ffffff;
-              border-radius: 10px;
-              box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.1);
-            }
-            h1 {
-              color: #333333;
-            }
-            p {
-              color: #666666;
-              margin-bottom: 20px;
-            }
-          </head><body>
-          <p>Temporary username: ${temporaryUsername}</p>
-          <p>Temporary password: ${randomPassword}</p>
-          <p>Temporary username and password are valid for 24 hours</p>
-          </body></html>
-        `
+        `Temporary username: ${temporaryUsername}\nTemporary password: ${randomPassword}`,null
       );
     }
 
@@ -899,3 +867,61 @@ exports.removeTemporaryAdmins = async (req, res) => {
     console.log(error);
   }
 };
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { username } = req.club;
+    const {oldPassword, newPassword, confirmPassword } = req.body;
+    const club = await ClubAuthorization.findOne({ username });
+    if (!club) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Club not found",
+        data: null,
+        error: null,
+      });
+    }
+
+    if(newPassword !== confirmPassword) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Passwords do not match",
+        data: null,
+        error: null,
+      });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, club.password);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Invalid password",
+        data: null,
+        error: null,
+      });
+    }
+
+    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+
+    club.password = hashedPassword;
+
+    await club.save();
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Password changed successfully",
+      data: club,
+      error: null,
+    });
+  }
+  catch(error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      data: null,
+      error: error,
+    });
+  }
+}
