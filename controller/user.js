@@ -110,7 +110,6 @@ exports.getAllOperators = async (req, res) => {
 
 exports.register = async (req, res) => {
   try {
-    const file = req.files;
     const {
       username,
       email,
@@ -134,63 +133,6 @@ exports.register = async (req, res) => {
     }
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = bcrypt.hashSync(password, salt);
-
-    if (file && file.profileImage) {
-      const image = await uploadImage({
-        file: file.profileImage,
-        folder: "operators",
-        name: username,
-      });
-
-      if (!image) {
-        return res.status(400).json({
-          statusCode: 400,
-          message: "Image upload failed",
-          exception: null,
-          data: null,
-        });
-      }
-
-      const newUser = await Operators.create({
-        username,
-        password: hashedPassword,
-        mobileNumber,
-        email,
-        address,
-        profileImage: {
-          url: image.url,
-          public_id: image.public_id,
-        },
-        idProof: {
-          idType,
-          idNumber,
-        },
-      });
-
-      const payload = {
-        user: {
-          id: newUser._id,
-          role: newUser.role,
-        },
-      };
-
-      const token = await encryptPayload(payload);
-
-      return res
-        .cookie("user-token", token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "strict",
-          maxAge: 1000 * 60 * 60 * 24,
-        })
-        .status(201)
-        .json({
-          statusCode: 201,
-          message: "User registered successfully",
-          data: newUser,
-          exception: null,
-        });
-    }
 
     const newUser = await Operators.create({
       username,
@@ -233,6 +175,112 @@ exports.register = async (req, res) => {
       username: req.body.username,
       mobileNumber: req.body.mobileNumber,
     });
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      exception: error,
+      data: null,
+    });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { id } = req.user;
+    if (!id) {
+      return res.status(401).json({
+        statusCode: 401,
+        message: "Unauthorized access",
+        exception: null,
+        data: null,
+      });
+    }
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+    const user = await Operators.findById(id);
+    if (!user) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "User not found",
+        exception: null,
+        data: null,
+      });
+    }
+    const isPasswordMatched = bcrypt.compareSync(oldPassword, user.password);
+    if (!isPasswordMatched) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Old password does not match",
+        exception: null,
+        data: null,
+      });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Password does not match",
+        exception: null,
+        data: null,
+      });
+    }
+    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+    await Operators.findByIdAndUpdate(id, {
+      password: hashedPassword,
+    });
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Password changed successfully",
+      exception: null,
+      data: null,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      exception: error,
+      data: null,
+    });
+  }
+};
+
+exports.addOperatorImage = async (req, res) => {
+  try {
+    const { id } = req.user;
+    if (!id) {
+      return res.status(401).json({
+        statusCode: 401,
+        message: "Unauthorized access",
+        exception: null,
+        data: null,
+      });
+    }
+    const user = await Operators.findById(id);
+    if (!user) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "User not found",
+        exception: null,
+        data: null,
+      });
+    }
+    const { url, public_id } = await uploadImage({
+      file: req.files.image,
+      folder: "operators",
+      name: user._id,
+    });
+    user.profileImage = {
+      url,
+      public_id,
+    };
+    await user.save();
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Image uploaded successfully",
+      data: user,
+      exception: null,
+    });
+  } catch (error) {
+    console.log(error);
     return res.status(500).json({
       statusCode: 500,
       message: "Internal server error",
@@ -308,13 +356,7 @@ exports.updateOperator = async (req, res) => {
         data: null,
       });
     }
-    const {
-      email,
-      mobileNumber,
-      profileImage,
-      idType,
-      idNumber
-    } = req.body;
+    const { email, mobileNumber, profileImage, idType, idNumber } = req.body;
     const user = await Operators.findById(id);
     if (!user) {
       return res.status(404).json({
@@ -322,9 +364,13 @@ exports.updateOperator = async (req, res) => {
         message: "User not found",
       });
     }
-    const hashedPassword = bcrypt.hashSync(req.body.password, 10);
+    const hashedPassword = null;
+    if(req.body.password){
+      hashedPassword = bcrypt.hashSync(req.body.password, 10);
+    }
+    
     const updatedUser = await Operators.findByIdAndUpdate(id, {
-      password: hashedPassword,
+      password: hashedPassword? hashedPassword : user.password,
       mobileNumber,
       profileImage,
       email,
@@ -493,7 +539,7 @@ exports.logout = async (req, res) => {
     return res.status(500).json({
       statusCode: 500,
       message: "Internal server error",
-      exception: {error},
+      exception: { error },
       data: null,
     });
   }

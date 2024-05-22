@@ -5,9 +5,19 @@ const accessKeySchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  role: {
+    type: String,
+    required: true,
+  },
   club: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Club",
+  },
+  expiryTime: {
+    type: Date,
+    default:  function() {
+      return Date.now() + 60 * 1000;
+    },
   },
   timestamps: {
     type: Date,

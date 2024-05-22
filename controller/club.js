@@ -38,6 +38,7 @@ exports.createClub = async (req, res) => {
 
     const accessKey = new AccessKey({
       key: token,
+      role: role,
       club: club._id,
     });
 
@@ -121,11 +122,95 @@ exports.createClub = async (req, res) => {
   }
 };
 
+exports.verifyAccessKey = async (req, res) => {
+  try {
+    const { OneTimeKey } = req.body;
+
+    if (!OneTimeKey)
+      return res.status(400).json({
+        statusCode: 400,
+        message: "One Time Key is required",
+        data: null,
+        error: null,
+      });
+
+    const accessKey = await AccessKey.findOne({ key: OneTimeKey });
+
+    if (!accessKey) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Invalid access key",
+        data: null,
+        error: null,
+      });
+    }
+
+    if (accessKey.expiryTime < Date.now()) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Access key expired",
+        data: null,
+        error: null,
+      });
+    }
+
+    const club = await ClubAuthorization.findById(accessKey.club);
+
+    if (!club) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Invalid access key",
+        data: null,
+        error: null,
+      });
+    }
+
+    club.verified = true;
+    club.role = accessKey.role;
+    await club.save();
+
+    const payload = {
+      club: {
+        username: club.username,
+        role: club.role,
+        temporary: club.temporary || false,
+        verified: club.verified,
+      },
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: 1000 * 60 * 60 * 24,
+    });
+
+    return res
+      .cookie("auth-token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 1000 * 60 * 60 * 24,
+      })
+      .status(200)
+      .json({
+        statusCode: 200,
+        message: "Access key verified successfully",
+        data: club,
+        error: null,
+      });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      data: null,
+    });
+  }
+};
+
 exports.resendAccessKey = async (req, res) => {
   try {
     const { username } = req.body;
 
-    const club = await ClubAuthorization.findOne({ username });
+    const club = await ClubAuthorization.findOne({ username: username });
 
     if (!club) {
       return res.status(400).json({
@@ -135,6 +220,40 @@ exports.resendAccessKey = async (req, res) => {
         error: null,
       });
     }
+
+    if (club.verified) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Club already verified",
+        data: null,
+        error: null,
+      });
+    }
+
+    if (!club.accessKey) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Access key not found",
+        data: null,
+        error: null,
+      });
+    }
+
+    const accessKey = await AccessKey.findById(club.access);
+
+    if (!accessKey) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Access key not found",
+        data: null,
+        error: null,
+      });
+    }
+
+    const token = crypto.randomBytes(12).toString("hex");
+    accessKey.key = token;
+    accessKey.expiryTime = Date.now() + 60 * 1000;
+    await accessKey.save();
 
     const adminMails = await ClubAuthorization.find({
       role: "admin",
@@ -171,9 +290,9 @@ exports.resendAccessKey = async (req, res) => {
             </head>
             <body>
               <p>Access key for ${username} is:</p>
-              <p><strong>${club.accessKey.key}</strong></p>
+              <p><strong>${accessKey.key}</strong></p>
               <P>
-                The user wants to be an ${club.role} of the club.
+                The user wants to be an ${accessKey.role} of the club.
               </P>
               <p>Please verify the club and provide the key to the user</p>
             </body>
@@ -204,80 +323,6 @@ exports.resendAccessKey = async (req, res) => {
       data: null,
       error: null,
     });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      statusCode: 500,
-      message: "Internal server error",
-      data: null,
-    });
-  }
-};
-
-exports.verifyAccessKey = async (req, res) => {
-  try {
-    const { OneTimeKey } = req.body;
-
-    if (!OneTimeKey)
-      return res.status(400).json({
-        statusCode: 400,
-        message: "One Time Key is required",
-        data: null,
-        error: null,
-      });
-
-    const accessKey = await AccessKey.findOne({ key: OneTimeKey });
-
-    if (!accessKey) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "Invalid access key",
-        data: null,
-        error: null,
-      });
-    }
-
-    const club = await ClubAuthorization.findById(accessKey.club);
-
-    if (!club) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "Invalid access key",
-        data: null,
-        error: null,
-      });
-    }
-
-    club.verified = true;
-    await club.save();
-
-    const payload = {
-      club: {
-        username: club.username,
-        role: club.role,
-        temporary: club.temporary || false,
-        verified: club.verified,
-      },
-    };
-
-    const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: 1000 * 60 * 60 * 24,
-    });
-
-    return res
-      .cookie("auth-token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 1000 * 60 * 60 * 24,
-      })
-      .status(200)
-      .json({
-        statusCode: 200,
-        message: "Access key verified successfully",
-        data: club,
-        error: null,
-      });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -375,6 +420,17 @@ exports.updateClub = async (req, res) => {
     }
 
     const { newPassword, newUsername } = req.body;
+    
+    const existingUsername = await ClubAuthorization.findOne({ username: newUsername }); 
+
+    if (existingUsername && newUsername !== username) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Username already exists",
+        data: null,
+        error: null,
+      });
+    }
 
     if (newPassword) {
       const hashedPassword = bcrypt.hashSync(newPassword, 10);
@@ -509,7 +565,39 @@ exports.forgetPassword = async (req, res) => {
       await sendMail(
         adminMails[i].email,
         "Temporary Club Credentials",
-        `Temporary username: ${temporaryUsername} and password: ${randomPassword}`
+        null,
+        `
+          <html>
+          <head>
+          <title>Temporary Club Credentials</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background-color: #f4f4f4;
+              margin: 0;
+              padding: 0;
+            }
+            .container {
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+              background-color: #ffffff;
+              border-radius: 10px;
+              box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.1);
+            }
+            h1 {
+              color: #333333;
+            }
+            p {
+              color: #666666;
+              margin-bottom: 20px;
+            }
+          </head><body>
+          <p>Temporary username: ${temporaryUsername}</p>
+          <p>Temporary password: ${randomPassword}</p>
+          <p>Temporary username and password are valid for 24 hours</p>
+          </body></html>
+        `
       );
     }
 
@@ -782,12 +870,22 @@ exports.changeRole = async (req, res) => {
 
 exports.deleteUnverifiedClubs = async (req, res) => {
   try {
-    console.log("Deleting unverified clubs");
-    const deletedClubs = await ClubAuthorization.deleteMany({
+    const cutoffTime = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    console.log("Deleting unverified clubs older than 24 hours");
+
+    const unverifiedClubs = await ClubAuthorization.find({
       verified: false,
       temporary: false,
+      createdAt: { $lt: cutoffTime },
     });
-    await AccessKey.deleteMany({ club: { $in: deletedClubs } });
+
+    const clubIds = unverifiedClubs.map((club) => club._id);
+
+    await ClubAuthorization.deleteMany({ _id: { $in: clubIds } });
+
+    await AccessKey.deleteMany({ club: { $in: clubIds } });
+
+    console.log(`Deleted ${clubIds.length} unverified clubs`);
   } catch (error) {
     console.log(error);
   }

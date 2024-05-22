@@ -15,7 +15,7 @@ const fileUpload = require("express-fileupload");
 const MongoStore = require("connect-mongo");
 const cron = require("node-cron");
 const {
-  deleteUnverifiedUsers,
+  deleteUnverifiedClubs,
   removeTemporaryAdmins,
 } = require("./controller/club");
 
@@ -88,6 +88,6 @@ app.get("/", (req, res) => {
 });
 
 cron.schedule("0 3 * * *", async () => {
-  await deleteUnverifiedUsers();
+  await deleteUnverifiedClubs();
   await removeTemporaryAdmins();
 });
