@@ -6,6 +6,7 @@ const {
   updateImage,
   getMembers,
   addMemberImage,
+  getMembersById
 } = require("../controller/member");
 const {
   isAuthenticated,
@@ -31,7 +32,7 @@ router.get(
   isInClub,
   isUser,
   isOperator,
-  getMembers
+  getMembersById
 );
 
 router.put(
