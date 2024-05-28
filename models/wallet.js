@@ -2,12 +2,14 @@ const mongoose = require("mongoose");
 
 const walletSchema = new mongoose.Schema({
   memberId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,
     ref: "MemberSchema",
+    required: true,
   },
   balance: {
     type: Number,
     required: true,
+    default: 0,
   },
   transactions: [
     {

@@ -18,6 +18,7 @@ const {
   deleteUnverifiedClubs,
   removeTemporaryAdmins,
 } = require("./controller/club");
+const { logout } = require("./controller/user");
 
 // Configuring dotenv
 dotenv.config({
@@ -77,6 +78,7 @@ app.use("/api/v1/club", clubRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/member", memberRoutes);
 app.use("/api/v1/wallet", walletRoutes);
+app.get("/api/v1/logout", logout);
 
 // Port Running on process.env.PORT
 app.listen(process.env.PORT, () => {
