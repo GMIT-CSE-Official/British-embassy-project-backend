@@ -4,6 +4,18 @@ const memberSchema = new mongoose.Schema({
   _id: {
     type: String,
   },
+  firstname: {
+    type: String,
+    required: true,
+    min: 6,
+    max: 255,
+  },
+  lastname: {
+    type: String,
+    required: true,
+    min: 6,
+    max: 255,
+  },
   name: {
     type: String,
     required: true,
@@ -16,9 +28,16 @@ const memberSchema = new mongoose.Schema({
     min: 10,
     max: 15,
   },
+  email: {
+    type: String,
+    min: 6,
+    max: 255,
+  },
   image: {
     url: {
       type: String,
+      default:
+        "https://icon-library.com/images/anonymous-avatar-icon/anonymous-avatar-icon-25.jpg",
     },
     public_id: {
       type: String,
@@ -29,6 +48,16 @@ const memberSchema = new mongoose.Schema({
     required: true,
     min: 6,
     max: 255,
+  },
+  idProof: {
+    idType: {
+      type: String,
+      required: true,
+    },
+    idNumber: {
+      type: String,
+      required: true,
+    },
   },
   bloodGroup: {
     type: String,
@@ -47,6 +76,15 @@ const memberSchema = new mongoose.Schema({
   timeStamp: {
     type: Date,
     default: Date.now(),
+  },
+  expiryTime: {
+    type: Date,
+    required: true,
+    default: Date.now() + 1000 * 60 * 60 * 24 * 365,
+  },
+  expired: {
+    type: Boolean,
+    default: false,
   },
 });
 

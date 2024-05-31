@@ -40,6 +40,7 @@ class TransactionFilter {
       .model("TransactionSchema")
       .find(this.queryString.sort ? this.queryString : {})
       .sort(this.queryString.sort)
+      .limit(this.pagination.limit)
       .skip(this.pagination.skip);
     return transactions;
   }
@@ -54,10 +55,7 @@ class MemberFilter {
   }
 
   filter() {
-    if (this.query.name) this.queryString.name = this.query.name;
-    if (this.query.email) this.queryString.email = this.query.email;
-    if (this.query.phone) this.queryString.phone = this.query.phone;
-    if (this.query.memberId) this.queryString._id = this.query.memberId;
+    if (this.query.search) this.queryString.search = this.query.search;
     return this;
   }
 
@@ -76,11 +74,22 @@ class MemberFilter {
   }
 
   async exec() {
+    console.log(this.queryString, this.pagination);
+    const searchRegex = new RegExp(this.queryString.search, "i");
     const members = await mongoose
       .model("MemberSchema")
-      .find(this.queryString.sort ? this.queryString : {})
+      .find({
+        $or: [
+          { name: { $regex: searchRegex } },
+          { email: { $regex: searchRegex } },
+          { mobileNumber: { $regex: searchRegex } },
+          { _id: { $regex: searchRegex } },
+        ],
+      })
       .sort(this.queryString.sort)
-      .skip(this.pagination.skip);
+      .skip(this.pagination.skip)
+      .limit(this.pagination.limit)
+      .populate("wallet");
     return members;
   }
 }

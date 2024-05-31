@@ -1,26 +1,26 @@
 const Router = require("express");
 const {
   register,
-  getAllOperators,
   updateOperator,
   loginUser,
-  getOperatorById,
   forgetPassword,
   resetPassword,
-  logout,
   sendResetTokenAgain,
   addOperatorImage,
+  changePassword,
+  getCurrentUser,
+  getAllOperators,
 } = require("../controller/user");
 const {
   validateRegistration,
   validateLogin,
   validateForgetPassword,
   validateResetPassword,
+  validateChangePassword,
 } = require("../middleware/zod-user-middleware");
 
 const {
   isAuthenticated,
-  isAdmin,
   isInClub,
   isOperator,
   isUser,
@@ -39,17 +39,12 @@ router.post(
   "/add-operator-image",
   isAuthenticated,
   isInClub,
+  isUser,
   isOperator,
   addOperatorImage
 );
-router.get(
-  "/profile",
-  isAuthenticated,
-  isInClub,
-  isUser,
-  isOperator,
-  getOperatorById
-);
+router.get("/profile", isAuthenticated, isInClub, getCurrentUser);
+router.get("/profile-all", isAuthenticated, isInClub, getAllOperators);
 router.post("/login", isAuthenticated, isInClub, validateLogin, loginUser);
 router.put(
   "/update",
@@ -66,6 +61,14 @@ router.put(
   validateForgetPassword,
   sendResetTokenAgain
 );
-router.get("/logout", isAuthenticated, isInClub, isUser, isOperator, logout);
+router.patch(
+  "/change-password",
+  isAuthenticated,
+  isInClub,
+  isUser,
+  isOperator,
+  validateChangePassword,
+  changePassword
+);
 
 module.exports = router;

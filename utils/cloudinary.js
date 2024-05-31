@@ -10,7 +10,6 @@ exports.uploadImage = async ({ file, folder = "club", name = "" }) => {
 
     const result = await cloudinary.uploader.upload(filePath, {
       folder: folder,
-      public_id: name,
     });
 
     return {
@@ -19,7 +18,7 @@ exports.uploadImage = async ({ file, folder = "club", name = "" }) => {
     };
   } catch (error) {
     console.log(error);
-    return {error: error};
+    return { error: error };
   }
 };
 
