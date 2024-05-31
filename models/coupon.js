@@ -6,13 +6,9 @@ const couponSchema = new mongoose.Schema({
     required: true,
   },
   memberId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,
     ref: "MemberSchema",
-  },
-  expiryTime: {
-    type: Date,
     required: true,
-    default: Date.now() + 1000 * 60 * 60 * 24 * 365,
   },
   timeStamp: {
     type: Date,

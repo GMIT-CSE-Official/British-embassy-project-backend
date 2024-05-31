@@ -1,11 +1,28 @@
-const MemberSchema = require("../models/members");
+const MemberSchema = require("../models/members.js");
+const WalletSchema = require("../models/wallet.js");
 const { uploadImage, deleteImage } = require("../utils/cloudinary.js");
 const { MemberFilter } = require("../utils/filters");
+const Cache = require("node-cache");
+
+const cache = new Cache();
 
 exports.addMember = async (req, res) => {
   try {
-    const file = req.files;
-    const { name, mobileNumber, address, expiryDate, bloodGroup, organization } = req.body;
+    const {
+      firstName,
+      lastname,
+      name,
+      email,
+      mobileNumber,
+      address,
+      expiryDate,
+      bloodGroup,
+      organization,
+      idType,
+      idNumber,
+      url,
+      public_id,
+    } = req.body;
 
     const mobileNumberPattern = /^[0-9]{10}$/;
 
@@ -30,27 +47,56 @@ exports.addMember = async (req, res) => {
 
     const allMembersCount = await MemberSchema.find().countDocuments();
 
-    const timeStamp = await new Date()
-      .toISOString()
-      .slice(0, 10)
-      .replace(/-/g, "");
+    const timeStamp = new Date().toISOString().slice(0, 10);
 
-    const memberId = await `BEC${timeStamp}${name}@${allMembersCount + 1}`;
+    const memberId = `BEC${timeStamp}${name}${allMembersCount + 1}`;
 
-    const member = await MemberSchema.create({
-      _id: memberId,
+    const member = new MemberSchema({
+      _id: memberId.replace(/\s/g, ""),
+      firstname: firstName,
+      lastname: lastname,
       name,
       mobileNumber,
       address,
+      email,
+      idProof: {
+        idType,
+        idNumber,
+      },
       expiryDate,
       bloodGroup,
-      organization
+      organization,
+      image: {
+        url,
+        public_id,
+      },
     });
+
+    const wallet = await WalletSchema.create({
+      memberId: memberId.replace(/\s/g, ""),
+    });
+
+    member.wallet = wallet._id;
+
+    await member.save();
+
+    if (!member || !wallet) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Member not added",
+        exception: null,
+        data: null,
+      });
+    }
+
     return res.status(201).json({
       statusCode: 201,
       message: "Member added successfully",
       exception: null,
-      data: member,
+      data: {
+        member,
+        wallet,
+      },
     });
   } catch (error) {
     console.log(error);
@@ -76,6 +122,9 @@ exports.deleteMember = async (req, res) => {
       });
     }
     await deleteImage(member.image.public_id);
+
+    await WalletSchema.findOneAndDelete({ memberId: member._id });
+
     return res.status(200).json({
       statusCode: 200,
       message: "Member deleted successfully",
@@ -96,8 +145,20 @@ exports.deleteMember = async (req, res) => {
 exports.updateMember = async (req, res) => {
   try {
     const { memberId } = req.params;
-    const file = req.files;
-    const { mobileNumber, bloodGroup, organization, address, expiryDate, timeStamp } = req.body;
+    const {
+      firstName,
+      lastname,
+      mobileNumber,
+      bloodGroup,
+      organization,
+      address,
+      email,
+      expiryDate,
+      timeStamp,
+      idNumber,
+      idType,
+      username,
+    } = req.body;
 
     const memberData = await MemberSchema.findById(memberId);
 
@@ -110,36 +171,21 @@ exports.updateMember = async (req, res) => {
       });
     }
 
-    let image = memberData.image;
-    if (file && file.image) {
-      await deleteImage(memberData.image.public_id);
-      image = await uploadImage({
-        file: file.image,
-        folder: "members",
-        name: memberData.name,
-      });
-    }
-
-    if (!image) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "Image not uploaded",
-        exception: null,
-        data: null,
-      });
-    }
-
     const member = await MemberSchema.findByIdAndUpdate(memberId, {
-      mobileNumber: mobileNumber? mobileNumber : memberData.mobileNumber,
-      address: address? address : memberData.address,
-      expiryDate: expiryDate? expiryDate : memberData.expiryDate,
-      timeStamp: timeStamp? timeStamp : memberData.timeStamp,
-      image: {
-        url: image.url? image.url : memberData.image.url,
-        public_id: image.public_id? image.public_id : memberData.image.public_id,
+      firstname: firstName ? firstName : memberData.firstname,
+      lastname: lastname ? lastname : memberData.lastname,
+      mobileNumber: mobileNumber ? mobileNumber : memberData.mobileNumber,
+      address: address ? address : memberData.address,
+      idProof: {
+        idType: idType ? idType : memberData.idType,
+        idNumber: idNumber ? idNumber : memberData.idNumber,
       },
-      bloodGroup: bloodGroup? bloodGroup : memberData.bloodGroup,
-      organization: organization? organization : memberData.organization
+      expiryTime: expiryDate ? expiryDate : memberData.expiryDate,
+      timeStamp: timeStamp ? timeStamp : memberData.timeStamp,
+      bloodGroup: bloodGroup ? bloodGroup : memberData.bloodGroup,
+      organization: organization ? organization : memberData.organization,
+      username: username ? username : memberData.username,
+      email: email ? email : memberData.email,
     });
 
     if (!member) {
@@ -238,11 +284,13 @@ exports.updateImage = async (req, res) => {
 
 exports.getMembers = async (req, res) => {
   try {
+    const totalMembers = await MemberSchema.find().countDocuments();
     const filter = new MemberFilter(req.query).filter().sort().paginate();
     const members = await filter.exec();
     return res.status(200).json({
       statusCode: 200,
       message: "Members found",
+      totalMembers: totalMembers,
       exception: null,
       data: members,
     });
@@ -259,15 +307,12 @@ exports.getMembers = async (req, res) => {
 
 exports.addMemberImage = async (req, res) => {
   try {
-    const { memberId } = req.params;
     const file = req.files;
 
-    const memberData = await MemberSchema.findById(memberId);
-
-    if (!memberData) {
-      return res.status(404).json({
-        statusCode: 404,
-        message: "Member not found",
+    if (!file || !file.image) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Image not uploaded",
         exception: null,
         data: null,
       });
@@ -276,7 +321,6 @@ exports.addMemberImage = async (req, res) => {
     const image = await uploadImage({
       file: file.image,
       folder: "members",
-      name: memberData.name,
     });
 
     if (!image) {
@@ -288,13 +332,39 @@ exports.addMemberImage = async (req, res) => {
       });
     }
 
-    const member = await MemberSchema.findByIdAndUpdate(memberId, {
-      image: {
-        url: image.url,
+    return res.status(200).json({
+      statusCode: 200,
+      data: {
+        image: image.url,
         public_id: image.public_id,
       },
+      exception: null,
     });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      exception: error,
+      data: null,
+    });
+  }
+};
 
+exports.getMemberById = async (req, res) => {
+  try {
+    const { memberId } = req.params;
+
+    if (cache.has(memberId)) {
+      return res.status(200).json({
+        statusCode: 200,
+        message: "Member found",
+        exception: null,
+        data: cache.get(memberId),
+      });
+    }
+
+    const member = await MemberSchema.findById(memberId);
     if (!member) {
       return res.status(404).json({
         statusCode: 404,
@@ -304,9 +374,11 @@ exports.addMemberImage = async (req, res) => {
       });
     }
 
+    cache.set(memberId, member);
+
     return res.status(200).json({
       statusCode: 200,
-      message: "Image added successfully",
+      message: "Member found",
       exception: null,
       data: member,
     });
