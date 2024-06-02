@@ -80,7 +80,6 @@ app.use("/api/v1/member", memberRoutes);
 app.use("/api/v1/wallet", walletRoutes);
 app.get("/api/v1/logout", logout);
 
-// Port Running on process.env.PORT
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on port ${process.env.PORT}`);
 });
@@ -89,6 +88,16 @@ app.get("/", (req, res) => {
   res.send(`welcome to the club app, ${req.hostname}!`);
 });
 
+app.use((req, res) => {
+  res.status(404).json({
+    statusCode: 404,
+    message: "Route not found",
+    data: null,
+    exception: null,
+  });
+});
+
+// every day at 3am delete unverified clubs
 cron.schedule("0 3 * * *", async () => {
   await deleteUnverifiedClubs();
   await removeTemporaryAdmins();
