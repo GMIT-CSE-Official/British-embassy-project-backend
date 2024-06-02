@@ -108,7 +108,7 @@ exports.createClub = async (req, res) => {
       statusCode: 201,
       message:
         "Club created successfully please wait for verification and ask admin for access key",
-      data: null,
+      data: club,
       exception: null,
     });
   } catch (error) {
@@ -248,7 +248,7 @@ exports.resendAccessKey = async (req, res) => {
       });
     }
 
-    const accessKey = await AccessKey.findById(club.access);
+    const accessKey = await AccessKey.findById(club.accessKey);
 
     if (!accessKey) {
       return res.status(400).json({
@@ -537,15 +537,6 @@ exports.getProfile = async (req, res) => {
 
 exports.forgetPassword = async (req, res) => {
   try {
-    if (cache.get(username)) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "Temporary password already sent",
-        data: null,
-        error: null,
-      });
-    }
-
     const temporaryUsername = crypto.randomBytes(10).toString("hex");
     const randomEmail = crypto.randomBytes(10).toString("hex") + "@gmail.com";
     const randomPassword = crypto.randomBytes(20).toString("hex");
@@ -569,8 +560,6 @@ exports.forgetPassword = async (req, res) => {
         null
       );
     }
-
-    cache.set(username, true);
 
     return res.status(200).json({
       statusCode: 200,
