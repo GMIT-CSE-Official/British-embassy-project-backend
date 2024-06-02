@@ -20,11 +20,9 @@ const transactionSchema = new mongoose.Schema({
   },
   payableAmount: {
     type: Number,
-    required: true,
   },
   couponAmount: {
     type: Number,
-    required: true,
   },
   type: {
     type: String,

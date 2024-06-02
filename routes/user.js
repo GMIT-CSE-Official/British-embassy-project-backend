@@ -6,10 +6,10 @@ const {
   forgetPassword,
   resetPassword,
   sendResetTokenAgain,
-  addOperatorImage,
   changePassword,
   getCurrentUser,
   getAllOperators,
+  updateOperatorImage,
 } = require("../controller/user");
 const {
   validateRegistration,
@@ -36,12 +36,12 @@ router.post(
   register
 );
 router.post(
-  "/add-operator-image",
+  "/update-operator-image",
   isAuthenticated,
   isInClub,
   isUser,
   isOperator,
-  addOperatorImage
+  updateOperatorImage
 );
 router.get("/profile", isAuthenticated, isInClub, getCurrentUser);
 router.get("/profile-all", isAuthenticated, isInClub, getAllOperators);

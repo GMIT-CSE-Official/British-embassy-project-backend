@@ -46,6 +46,7 @@ exports.decryptPayload = async (token) => {
 exports.getCurrentUser = async (req, res) => {
   try {
     const { username } = req.club;
+    console.log(username);
 
     if (!username) {
       return res.status(401).json({
@@ -56,81 +57,69 @@ exports.getCurrentUser = async (req, res) => {
       });
     }
 
-    if (node_cache.has(`club-${username}`)) {
-      return res.status(200).json({
-        statusCode: 200,
-        message: "User found",
-        data: node_cache.get(`club-${username}`),
-        exception: null,
-      });
-    }
+    // if (node_cache.has("Club") || node_cache.has("Operators")) {
+    //   const club = node_cache.get("Club");
+    //   const user = node_cache.get("Operators");
+    //   if (club && club.role === "admin") {
+    //     return res.status(200).json({
+    //       statusCode: 200,
+    //       message: "Club found",
+    //       data: club,
+    //       exception: null,
+    //     });
+    //   }
+    //   if (user && user.role === "operator") {
+    //     return res.status(200).json({
+    //       statusCode: 200,
+    //       message: "User found",
+    //       data: user,
+    //       exception: null,
+    //     });
+    //   }
+    // }
 
-    const token = req.cookies["user-token"];
+    const admin = await ClubAuthorization.findOne({
+      username,
+      role: "admin",
+      verified: true,
+    });
 
-    if (!token) {
-      const user = await ClubAuthorization.findOne({
+    if (admin) {
+      const club = await ClubAuthorization.findOne({
         username,
-      });
-
-      if (!user) {
+        role: "admin",
+        verified: true,
+      }).select("-password");
+      if (!club) {
         return res.status(404).json({
           statusCode: 404,
-          message: "User not found",
+          message: "Club not found",
           exception: null,
           data: null,
         });
       }
-
-      if (!user.verified) {
-        return res.status(401).json({
-          statusCode: 401,
-          message: "Unauthorized access",
-          exception: null,
-          data: null,
-        });
-      }
-      node_cache.set(`club-${username}`, user);
+      // node_cache.set("Club", club);
       return res.status(200).json({
         statusCode: 200,
-        message: "User found",
-        data: user,
+        message: "Club found",
+        data: club,
         exception: null,
       });
     }
-
-    const payload = await this.decryptPayload(token);
-    const { id } = JSON.parse(payload).user;
-
-    if (!id) {
-      const user = await ClubAuthorization.findOne({ username });
-      if (!user) {
-        return res.status(404).json({
-          statusCode: 404,
-          message: "Unauthorized access",
-          exception: null,
-          data: null,
-        });
-      }
-      node_cache.set(`club-${username}`, user);
-      return res.status(200).json({
-        statusCode: 200,
-        message: "User found",
-        data: user,
+    const token = req.cookies["user-token"];
+    if (!token) {
+      return res.status(401).json({
+        statusCode: 401,
+        message: "Unauthorized access",
         exception: null,
+        data: null,
       });
     }
+    const decryptedToken = await this.decryptPayload(token);
+    const { user } = JSON.parse(decryptedToken);
+    const operator = await Operators.findById(user.id).select("-password");
 
-    if (node_cache.has(`user-${id}`)) {
-      return res.status(200).json({
-        statusCode: 200,
-        message: "User found",
-        data: node_cache.get(`user-${id}`),
-        exception: null,
-      });
-    }
-    const user = await Operators.findById(id);
-
-    if (!user) {
+    if (!operator) {
       return res.status(404).json({
         statusCode: 404,
         message: "User not found",
@@ -138,11 +127,13 @@ exports.getCurrentUser = async (req, res) => {
         data: null,
       });
     }
-    node_cache.set(`user-${id}`, user);
+
+    // node_cache.set("Operators", user);
+
     return res.status(200).json({
       statusCode: 200,
       message: "User found",
-      data: user,
+      data: operator,
       exception: null,
     });
   } catch (error) {
@@ -311,7 +302,7 @@ exports.changePassword = async (req, res) => {
   }
 };
 
-exports.addOperatorImage = async (req, res) => {
+exports.updateOperatorImage = async (req, res) => {
   try {
     const { id } = req.user;
     if (!id) {
@@ -433,8 +424,7 @@ exports.updateOperator = async (req, res) => {
         data: null,
       });
     }
-    const { email, mobileNumber, profileImage, idType, idNumber, address } =
-      req.body;
+    const { email, mobileNumber, idType, idNumber, address } = req.body;
     const user = await Operators.findById(id);
     if (!user) {
       return res.status(404).json({
@@ -450,7 +440,6 @@ exports.updateOperator = async (req, res) => {
     const updatedUser = await Operators.findByIdAndUpdate(id, {
       password: hashedPassword ? hashedPassword : user.password,
       mobileNumber,
-      profileImage,
       email,
       address,
       idProof: {
@@ -497,6 +486,7 @@ exports.forgetPassword = async (req, res) => {
       message: "Password reset link sent to your email",
       exception: null,
       data: null,
+      link: resetUrl,
     });
   } catch (error) {
     console.log(error);

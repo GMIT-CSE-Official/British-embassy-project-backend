@@ -5,8 +5,6 @@ const {
   getWallet,
   addTransaction,
   fetchTransactions,
-  updateTransaction,
-  updateCouponExpires,
   getAllTransactions,
 } = require("../controller/wallet.js");
 
@@ -18,21 +16,6 @@ router.get(
   isInClub,
   fetchTransactions
 );
-
-router.put(
-  "/update-transaction/:transactionId",
-  isAuthenticated,
-  isInClub,
-  updateTransaction
-);
-
-router.put(
-  "/update-coupon/:couponId",
-  isAuthenticated,
-  isInClub,
-  updateCouponExpires
-);
-
 router.get("/get-transactions", isAuthenticated, isInClub, getAllTransactions);
 
 module.exports = router;

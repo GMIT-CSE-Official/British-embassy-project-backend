@@ -1,5 +1,4 @@
 const ClubAuthorization = require("../models/club-authorization");
-const Operators = require("../models/operators");
 const AccessKey = require("../models/access-key");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
@@ -538,17 +537,6 @@ exports.getProfile = async (req, res) => {
 
 exports.forgetPassword = async (req, res) => {
   try {
-    const { username } = req.body;
-    const club = await ClubAuthorization.findOne({ username });
-    if (!club) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "Club not found",
-        data: null,
-        error: null,
-      });
-    }
-
     if (cache.get(username)) {
       return res.status(400).json({
         statusCode: 400,
@@ -558,14 +546,14 @@ exports.forgetPassword = async (req, res) => {
       });
     }
 
-    const temporaryUsername =
-      crypto.randomBytes(10).toString("hex") + "@gmail.com";
+    const temporaryUsername = crypto.randomBytes(10).toString("hex");
+    const randomEmail = crypto.randomBytes(10).toString("hex") + "@gmail.com";
     const randomPassword = crypto.randomBytes(20).toString("hex");
     const hashedPassword = bcrypt.hashSync(randomPassword, 10);
     const temporaryClub = new ClubAuthorization({
       username: temporaryUsername,
       password: hashedPassword,
-      email: club.email,
+      email: randomEmail,
       role: "admin",
       temporary: true,
     });

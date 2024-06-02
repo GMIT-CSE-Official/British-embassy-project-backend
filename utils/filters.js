@@ -21,14 +21,6 @@ class TransactionFilter {
     return this;
   }
 
-  sort() {
-    if (this.query.sortBy) {
-      const sortBy = this.query.sortBy === "asc" ? 1 : -1;
-      this.queryString.sort = { timeStamp: sortBy };
-    }
-    return this;
-  }
-
   paginate() {
     const skip = (this.page - 1) * this.limit;
     this.pagination = { skip, limit: this.limit };
@@ -39,9 +31,11 @@ class TransactionFilter {
     const transactions = await mongoose
       .model("TransactionSchema")
       .find(this.queryString.sort ? this.queryString : {})
-      .sort(this.queryString.sort)
+      .sort({ timeStamp: -1 })
       .limit(this.pagination.limit)
-      .skip(this.pagination.skip);
+      .skip(this.pagination.skip)
+      .populate("walletId memberId couponId");
+      // console.log(transactions);
     return transactions;
   }
 }
