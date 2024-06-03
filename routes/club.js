@@ -18,7 +18,7 @@ const app = Router();
 app.post("/create", validateClubRegistration, createClub);
 app.post("/verify-accessKey", verifyAccessKey);
 app.post("/login", validateClubLogin, login);
-app.post("/forget-password", validateForgetPassword, forgetPassword);
+app.post("/forget-password", forgetPassword);
 app.post("/temporary-login", validateClubLogin, temporaryLogin);
 app.post("/resend-otp", resendAccessKey);
 
