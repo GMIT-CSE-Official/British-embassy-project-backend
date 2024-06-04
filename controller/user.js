@@ -224,7 +224,7 @@ exports.register = async (req, res) => {
       .cookie("user-token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: "none",
         maxAge: 1000 * 60 * 60 * 24,
       })
       .status(201)
@@ -398,7 +398,7 @@ exports.loginUser = async (req, res) => {
       .cookie("user-token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: "none",
         maxAge: 1000 * 60 * 60 * 24,
       })
       .status(200)
