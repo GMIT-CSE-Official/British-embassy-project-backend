@@ -1,9 +1,10 @@
-const Operators = require("../models/operators");
 const bcrypt = require("bcrypt");
 const Node_cache = require("node-cache");
 const { sendMail } = require("../utils/mail-service");
 const crypto = require("crypto");
 const { uploadImage } = require("../utils/cloudinary");
+const ClubAuthorization = require("../models/club-authorization");
+const Operators = require("../models/operators");
 
 const node_cache = new Node_cache();
 
@@ -42,10 +43,11 @@ exports.decryptPayload = async (token) => {
   return decrypted.toString("utf8");
 };
 
-exports.getOperatorById = async (req, res) => {
+exports.getCurrentUser = async (req, res) => {
   try {
-    const { id } = req.user;
-    if (!id) {
+    const { username } = req.club;
+
+    if (!username) {
       return res.status(401).json({
         statusCode: 401,
         message: "Unauthorized access",
@@ -53,16 +55,79 @@ exports.getOperatorById = async (req, res) => {
         data: null,
       });
     }
-    if (node_cache.has(`user-${id}`)) {
+
+    const admin = await ClubAuthorization.findOne({
+      username,
+      role: "admin",
+      verified: true,
+    });
+
+    if (admin) {
+      const club = await ClubAuthorization.findOne({
+        username,
+        role: "admin",
+        verified: true,
+      }).select("-password");
+      if (!club) {
+        return res.status(404).json({
+          statusCode: 404,
+          message: "Club not found",
+          exception: null,
+          data: null,
+        });
+      }
       return res.status(200).json({
         statusCode: 200,
-        message: "User found",
-        data: node_cache.get(`user-${id}`),
+        message: "Club found",
+        data: club,
         exception: null,
       });
     }
-    const user = await Operators.findById(id);
-    if (!user) {
+
+    const temporaryAdmin = await ClubAuthorization.findOne({
+      username,
+      role: "admin",
+      verified: false,
+      temporary: true,
+    });
+
+    if (temporaryAdmin) {
+      const club = await ClubAuthorization.findOne({
+        username,
+        role: "admin",
+        verified: false,
+        temporary: true,
+      }).select("-password");
+      if (!club) {
+        return res.status(404).json({
+          statusCode: 404,
+          message: "Club not found",
+          exception: null,
+          data: null,
+        });
+      }
+      return res.status(200).json({
+        statusCode: 200,
+        message: "Club found",
+        data: club,
+        exception: null,
+      });
+    }
+
+    const token = req.cookies["user-token"];
+    if (!token) {
+      return res.status(401).json({
+        statusCode: 401,
+        message: "Unauthorized access",
+        exception: null,
+        data: null,
+      });
+    }
+    const decryptedToken = await this.decryptPayload(token);
+    const { user } = JSON.parse(decryptedToken);
+    const operator = await Operators.findById(user.id).select("-password");
+
+    if (!operator) {
       return res.status(404).json({
         statusCode: 404,
         message: "User not found",
@@ -70,11 +135,11 @@ exports.getOperatorById = async (req, res) => {
         data: null,
       });
     }
-    node_cache.set(`user-${id}`, user);
+
     return res.status(200).json({
       statusCode: 200,
       message: "User found",
-      data: user,
+      data: operator,
       exception: null,
     });
   } catch (error) {
@@ -90,15 +155,15 @@ exports.getOperatorById = async (req, res) => {
 
 exports.getAllOperators = async (req, res) => {
   try {
-    const Operators = await Operators.find();
-    if (!Operators) {
+    const operators = await Operators.find();
+    if (!operators) {
       return res.status(404).json({ message: "No Operators found" });
     }
     if (node_cache.has("Operators")) {
       return res.status(200).json(node_cache.get("Operators"));
     }
-    node_cache.set("Operators", Operators);
-    return res.status(200).json({ statusCode: 200, Operators });
+    node_cache.set("Operators", operators);
+    return res.status(200).json({ statusCode: 200, operators });
   } catch (error) {
     console.log(error);
     return res.status(500).json({
@@ -158,9 +223,8 @@ exports.register = async (req, res) => {
     return res
       .cookie("user-token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 1000 * 60 * 60 * 24,
+        secure: true,
+        sameSite: "none",
       })
       .status(201)
       .json({
@@ -243,7 +307,7 @@ exports.changePassword = async (req, res) => {
   }
 };
 
-exports.addOperatorImage = async (req, res) => {
+exports.updateOperatorImage = async (req, res) => {
   try {
     const { id } = req.user;
     if (!id) {
@@ -263,8 +327,17 @@ exports.addOperatorImage = async (req, res) => {
         data: null,
       });
     }
+    const file = req.files;
+    if (!file) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "No file uploaded",
+        exception: null,
+        data: null,
+      });
+    }
     const { url, public_id } = await uploadImage({
-      file: req.files.image,
+      file: file.image,
       folder: "operators",
       name: user._id,
     });
@@ -323,9 +396,8 @@ exports.loginUser = async (req, res) => {
     return res
       .cookie("user-token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 1000 * 60 * 60 * 24,
+        secure: true,
+        sameSite: "none",
       })
       .status(200)
       .json({
@@ -356,7 +428,7 @@ exports.updateOperator = async (req, res) => {
         data: null,
       });
     }
-    const { email, mobileNumber, profileImage, idType, idNumber } = req.body;
+    const { email, mobileNumber, idType, idNumber, address } = req.body;
     const user = await Operators.findById(id);
     if (!user) {
       return res.status(404).json({
@@ -365,15 +437,15 @@ exports.updateOperator = async (req, res) => {
       });
     }
     const hashedPassword = null;
-    if(req.body.password){
+    if (req.body.password) {
       hashedPassword = bcrypt.hashSync(req.body.password, 10);
     }
-    
+
     const updatedUser = await Operators.findByIdAndUpdate(id, {
-      password: hashedPassword? hashedPassword : user.password,
+      password: hashedPassword ? hashedPassword : user.password,
       mobileNumber,
-      profileImage,
       email,
+      address,
       idProof: {
         idType,
         idNumber,
@@ -418,6 +490,7 @@ exports.forgetPassword = async (req, res) => {
       message: "Password reset link sent to your email",
       exception: null,
       data: null,
+      link: resetUrl,
     });
   } catch (error) {
     console.log(error);
@@ -522,11 +595,13 @@ exports.sendResetTokenAgain = async (req, res) => {
 
 exports.logout = async (req, res) => {
   try {
-    const { id } = req.user;
-    node_cache.del(`user-${id}`);
     const cookies = ["user-token", "auth-token"];
     cookies.forEach((cookie) => {
-      res.clearCookie(cookie);
+      res.clearCookie(cookie, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+      });
     });
     return res.status(200).json({
       statusCode: 200,

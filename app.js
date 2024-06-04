@@ -18,6 +18,7 @@ const {
   deleteUnverifiedClubs,
   removeTemporaryAdmins,
 } = require("./controller/club");
+const { logout } = require("./controller/user");
 
 // Configuring dotenv
 dotenv.config({
@@ -38,6 +39,19 @@ const app = express();
 connectDB();
 
 // Middlewares
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Access-Control-Allow-Origin",
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    credentials: true,
+  })
+);
+app.options("*", cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
@@ -57,18 +71,7 @@ app.use(
     }),
   })
 );
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL,
-    credentials: true,
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Access-Control-Allow-Origin",
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  })
-);
+
 app.use(morgan("dev"));
 
 // Routes
@@ -77,8 +80,8 @@ app.use("/api/v1/club", clubRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/member", memberRoutes);
 app.use("/api/v1/wallet", walletRoutes);
+app.get("/api/v1/logout", logout);
 
-// Port Running on process.env.PORT
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on port ${process.env.PORT}`);
 });
@@ -87,6 +90,16 @@ app.get("/", (req, res) => {
   res.send(`welcome to the club app, ${req.hostname}!`);
 });
 
+app.use((req, res) => {
+  res.status(404).json({
+    statusCode: 404,
+    message: "Route not found",
+    data: null,
+    exception: null,
+  });
+});
+
+// every day at 3am delete unverified clubs
 cron.schedule("0 3 * * *", async () => {
   await deleteUnverifiedClubs();
   await removeTemporaryAdmins();

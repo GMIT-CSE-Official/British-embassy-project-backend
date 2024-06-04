@@ -92,13 +92,11 @@ const addMemberSchema = z.object({
   image: fileSchema.optional(),
 });
 
-const updateMemberSchema = z.object({
-  memberId: z.string({ message: "Please enter member id" }),
-  name: z.string({ message: "Please enter name" }),
-  mobileNumber: z.string({ message: "Please enter mobile number" }),
-  image_file_path: z.string({ message: "Please upload image" }),
-  address: z.string({ message: "Please enter address" }),
-  expiryDate: z.string({ message: "Please enter expiry date" }),
+
+const changePasswordSchema = z.object({
+  oldPassword: z.string({ message: "Please enter old password" }),
+  newPassword: z.string({ message: "Please enter new password" }),
+  confirmPassword: z.string({ message: "Please confirm new password" }),
 });
 
 module.exports = {
@@ -107,5 +105,5 @@ module.exports = {
   resetPasswordSchema,
   forgrtPasswordSchema,
   addMemberSchema,
-  updateMemberSchema,
+  changePasswordSchema
 };

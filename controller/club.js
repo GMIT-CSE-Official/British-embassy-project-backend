@@ -16,7 +16,7 @@ exports.createClub = async (req, res) => {
     if (existingClub) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Club already exists",
+        message: "Username already taken",
         data: null,
       });
     }
@@ -108,7 +108,7 @@ exports.createClub = async (req, res) => {
       statusCode: 201,
       message:
         "Club created successfully please wait for verification and ask admin for access key",
-      data: null,
+      data: club,
       exception: null,
     });
   } catch (error) {
@@ -185,9 +185,8 @@ exports.verifyAccessKey = async (req, res) => {
     return res
       .cookie("auth-token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 1000 * 60 * 60 * 24,
+        secure: true,
+        sameSite: "none",
       })
       .status(200)
       .json({
@@ -209,6 +208,15 @@ exports.verifyAccessKey = async (req, res) => {
 exports.resendAccessKey = async (req, res) => {
   try {
     const { username } = req.body;
+
+    if (!username) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Username is required",
+        data: null,
+        error: null,
+      });
+    }
 
     const club = await ClubAuthorization.findOne({ username: username });
 
@@ -239,7 +247,7 @@ exports.resendAccessKey = async (req, res) => {
       });
     }
 
-    const accessKey = await AccessKey.findById(club.access);
+    const accessKey = await AccessKey.findById(club.accessKey);
 
     if (!accessKey) {
       return res.status(400).json({
@@ -383,9 +391,8 @@ exports.login = async (req, res) => {
     return res
       .cookie("auth-token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 1000 * 60 * 60 * 24,
+        secure: true,
+        sameSite: "none",
       })
       .status(200)
       .json({
@@ -420,8 +427,10 @@ exports.updateClub = async (req, res) => {
     }
 
     const { newPassword, newUsername } = req.body;
-    
-    const existingUsername = await ClubAuthorization.findOne({ username: newUsername }); 
+
+    const existingUsername = await ClubAuthorization.findOne({
+      username: newUsername,
+    });
 
     if (existingUsername && newUsername !== username) {
       return res.status(400).json({
@@ -459,9 +468,8 @@ exports.updateClub = async (req, res) => {
     return res
       .cookie("auth-token", newToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 1000 * 60 * 60 * 24,
+        secure: true,
+        sameSite: "none",
       })
       .status(200)
       .json({
@@ -526,34 +534,14 @@ exports.getProfile = async (req, res) => {
 
 exports.forgetPassword = async (req, res) => {
   try {
-    const { username } = req.body;
-    const club = await ClubAuthorization.findOne({ username });
-    if (!club) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "Club not found",
-        data: null,
-        error: null,
-      });
-    }
-
-    if (cache.get(username)) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "Temporary password already sent",
-        data: null,
-        error: null,
-      });
-    }
-
-    const temporaryUsername =
-      crypto.randomBytes(10).toString("hex") + "@gmail.com";
+    const temporaryUsername = crypto.randomBytes(10).toString("hex");
+    const randomEmail = crypto.randomBytes(10).toString("hex") + "@gmail.com";
     const randomPassword = crypto.randomBytes(20).toString("hex");
     const hashedPassword = bcrypt.hashSync(randomPassword, 10);
     const temporaryClub = new ClubAuthorization({
       username: temporaryUsername,
       password: hashedPassword,
-      email: club.email,
+      email: randomEmail,
       role: "admin",
       temporary: true,
     });
@@ -565,43 +553,10 @@ exports.forgetPassword = async (req, res) => {
       await sendMail(
         adminMails[i].email,
         "Temporary Club Credentials",
-        null,
-        `
-          <html>
-          <head>
-          <title>Temporary Club Credentials</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              background-color: #f4f4f4;
-              margin: 0;
-              padding: 0;
-            }
-            .container {
-              max-width: 600px;
-              margin: 0 auto;
-              padding: 20px;
-              background-color: #ffffff;
-              border-radius: 10px;
-              box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.1);
-            }
-            h1 {
-              color: #333333;
-            }
-            p {
-              color: #666666;
-              margin-bottom: 20px;
-            }
-          </head><body>
-          <p>Temporary username: ${temporaryUsername}</p>
-          <p>Temporary password: ${randomPassword}</p>
-          <p>Temporary username and password are valid for 24 hours</p>
-          </body></html>
-        `
+        `Temporary username: ${temporaryUsername}\nTemporary password: ${randomPassword}`,
+        null
       );
     }
-
-    cache.set(username, true);
 
     return res.status(200).json({
       statusCode: 200,
@@ -659,9 +614,8 @@ exports.temporaryLogin = async (req, res) => {
     return res
       .cookie("auth-token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 1000 * 60 * 60 * 24,
+        secure: true,
+        sameSite: "none",
       })
       .status(200)
       .json({
@@ -731,7 +685,7 @@ exports.temporaryLogout = async (req, res) => {
 
     await ClubAuthorization.deleteOne({ username, temporary: true });
 
-    return res.status(200).json({
+    return res.clearCookie("auth-token").status(200).json({
       statusCode: 200,
       message: "Logged out successfully",
       data: null,
@@ -748,33 +702,13 @@ exports.temporaryLogout = async (req, res) => {
   }
 };
 
-exports.logout = async (req, res) => {
+exports.getAllUsers = async (req, res) => {
   try {
-    res.clearCookie("auth-token");
-    return res.status(200).json({
-      statusCode: 200,
-      message: "Logged out successfully",
-      data: null,
-      error: null,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      statusCode: 500,
-      message: "Internal server error",
-      data: null,
-      error: error,
-    });
-  }
-};
-
-exports.getAllOperator = async (req, res) => {
-  try {
-    const operators = await ClubAuthorization.find({ role: "operator" });
+    const users = await ClubAuthorization.find();
     return res.status(200).json({
       statusCode: 200,
       message: "Operators fetched successfully",
-      data: operators,
+      data: users,
       error: null,
     });
   } catch (error) {
@@ -897,5 +831,198 @@ exports.removeTemporaryAdmins = async (req, res) => {
     await ClubAuthorization.deleteMany({ temporary: true, role: "admin" });
   } catch (error) {
     console.log(error);
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { username } = req.club;
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+    const club = await ClubAuthorization.findOne({ username });
+    if (!club) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Club not found",
+        data: null,
+        error: null,
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Passwords do not match",
+        data: null,
+        error: null,
+      });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, club.password);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Invalid password",
+        data: null,
+        error: null,
+      });
+    }
+
+    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+
+    club.password = hashedPassword;
+
+    await club.save();
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Password changed successfully",
+      data: club,
+      error: null,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      data: null,
+      error: error,
+    });
+  }
+};
+
+exports.getAllClub = async (req, res) => {
+  try {
+    const { clubId } = req.params;
+    const club = await ClubAuthorization.findById(clubId);
+    if (!club) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Club not found",
+        data: null,
+        error: null,
+      });
+    }
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Club fetched successfully",
+      data: club,
+      error: null,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      data: null,
+      error: error,
+    });
+  }
+};
+
+exports.changePasswordAll = async (req, res) => {
+  try {
+    const { newPassword, confirmPassword } = req.body;
+    const { id } = req.params;
+    console.log(id);
+    const club = await ClubAuthorization.findById(id);
+    if (!club) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Club not found",
+        data: null,
+        error: null,
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Passwords do not match",
+        data: null,
+        error: null,
+      });
+    }
+
+    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+
+    const newClub = await ClubAuthorization.findByIdAndUpdate(
+      id,
+      { password: hashedPassword },
+      { new: true }
+    );
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Password changed successfully",
+      data: newClub,
+      error: null,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      data: null,
+      error: error,
+    });
+  }
+};
+
+exports.changeOperatorPassword = async (req, res) => {
+  try {
+    const { operatorId } = req.params;
+    const { username } = req.club;
+    const { newPassword, confirmPassword } = req.body;
+    const club = await ClubAuthorization.findOne({
+      username,
+    });
+    if (!club) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Club not found",
+        data: null,
+        error: null,
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Passwords do not match",
+        data: null,
+        error: null,
+      });
+    }
+
+    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+
+    const operator = await ClubAuthorization.findByIdAndUpdate(
+      operatorId,
+      { password: hashedPassword },
+      { new: true }
+    );
+    if (!operator) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: "Operator not found",
+        data: null,
+        error: null,
+      });
+    }
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Password changed successfully",
+      data: operator,
+      error: null,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Internal server error",
+      data: null,
+      error: error,
+    });
   }
 };

@@ -6,8 +6,9 @@ const transactionSchema = new mongoose.Schema({
     ref: "WalletSchema",
   },
   memberId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,
     ref: "MemberSchema",
+    required: true,
   },
   couponId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -19,11 +20,9 @@ const transactionSchema = new mongoose.Schema({
   },
   payableAmount: {
     type: Number,
-    required: true,
   },
   couponAmount: {
     type: Number,
-    required: true,
   },
   type: {
     type: String,
