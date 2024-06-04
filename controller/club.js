@@ -16,7 +16,7 @@ exports.createClub = async (req, res) => {
     if (existingClub) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Club already exists",
+        message: "Username already taken",
         data: null,
       });
     }

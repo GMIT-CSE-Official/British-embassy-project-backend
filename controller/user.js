@@ -46,7 +46,6 @@ exports.decryptPayload = async (token) => {
 exports.getCurrentUser = async (req, res) => {
   try {
     const { username } = req.club;
-    console.log(username);
 
     if (!username) {
       return res.status(401).json({
@@ -56,27 +55,6 @@ exports.getCurrentUser = async (req, res) => {
         data: null,
       });
     }
-
-    // if (node_cache.has("Club") || node_cache.has("Operators")) {
-    //   const club = node_cache.get("Club");
-    //   const user = node_cache.get("Operators");
-    //   if (club && club.role === "admin") {
-    //     return res.status(200).json({
-    //       statusCode: 200,
-    //       message: "Club found",
-    //       data: club,
-    //       exception: null,
-    //     });
-    //   }
-    //   if (user && user.role === "operator") {
-    //     return res.status(200).json({
-    //       statusCode: 200,
-    //       message: "User found",
-    //       data: user,
-    //       exception: null,
-    //     });
-    //   }
-    // }
 
     const admin = await ClubAuthorization.findOne({
       username,
@@ -98,7 +76,6 @@ exports.getCurrentUser = async (req, res) => {
           data: null,
         });
       }
-      // node_cache.set("Club", club);
       return res.status(200).json({
         statusCode: 200,
         message: "Club found",
@@ -106,6 +83,37 @@ exports.getCurrentUser = async (req, res) => {
         exception: null,
       });
     }
+
+    const temporaryAdmin = await ClubAuthorization.findOne({
+      username,
+      role: "admin",
+      verified: false,
+      temporary: true,
+    });
+
+    if (temporaryAdmin) {
+      const club = await ClubAuthorization.findOne({
+        username,
+        role: "admin",
+        verified: false,
+        temporary: true,
+      }).select("-password");
+      if (!club) {
+        return res.status(404).json({
+          statusCode: 404,
+          message: "Club not found",
+          exception: null,
+          data: null,
+        });
+      }
+      return res.status(200).json({
+        statusCode: 200,
+        message: "Club found",
+        data: club,
+        exception: null,
+      });
+    }
+
     const token = req.cookies["user-token"];
     if (!token) {
       return res.status(401).json({
@@ -127,8 +135,6 @@ exports.getCurrentUser = async (req, res) => {
         data: null,
       });
     }
-
-    // node_cache.set("Operators", user);
 
     return res.status(200).json({
       statusCode: 200,

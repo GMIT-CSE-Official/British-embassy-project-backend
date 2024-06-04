@@ -3,9 +3,6 @@ const MemberSchema = require("../models/members");
 const CouponSchema = require("../models/coupon");
 const TransactionSchema = require("../models/transaction");
 const { TransactionFilter } = require("../utils/filters");
-const Cache = require("node-cache");
-
-const cache = new Cache();
 
 exports.getWallet = async (req, res) => {
   try {
@@ -256,15 +253,29 @@ exports.fetchTransactions = async (req, res) => {
 
 exports.getAllTransactions = async (req, res) => {
   try {
-    const query = req.query;
+    const transactions = await TransactionSchema.find().populate(
+      "walletId memberId couponId"
+    );
 
-    const filter = new TransactionFilter(query);
-
-    const transactions = await filter.filter().paginate().exec();
+    if (transactions.length <= 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "No transactions found",
+        data: null,
+        exception: null,
+      });
+    }
 
     const totalTransactions = await TransactionSchema.find().countDocuments();
 
-    const today = new Date();
+    if (transactions.length <= 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "No transactions found",
+        data: null,
+        exception: null,
+      });
+    }
 
     const todaysTotalTransactions = await TransactionSchema.find({
       timeStamp: {
