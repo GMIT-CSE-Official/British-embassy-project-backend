@@ -599,7 +599,11 @@ exports.logout = async (req, res) => {
   try {
     const cookies = ["user-token", "auth-token"];
     cookies.forEach((cookie) => {
-      res.clearCookie(cookie);
+      res.clearCookie(cookie, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+      });
     });
     return res.status(200).json({
       statusCode: 200,
