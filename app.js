@@ -39,6 +39,19 @@ const app = express();
 connectDB();
 
 // Middlewares
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Access-Control-Allow-Origin",
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    credentials: true,
+  })
+);
+app.options("*", cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
@@ -58,18 +71,7 @@ app.use(
     }),
   })
 );
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL,
-    credentials: true,
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Access-Control-Allow-Origin",
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  })
-);
+
 app.use(morgan("dev"));
 
 // Routes
