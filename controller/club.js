@@ -185,9 +185,8 @@ exports.verifyAccessKey = async (req, res) => {
     return res
       .cookie("auth-token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: true,
         sameSite: "none",
-        maxAge: 1000 * 60 * 60 * 24,
       })
       .status(200)
       .json({
@@ -392,9 +391,8 @@ exports.login = async (req, res) => {
     return res
       .cookie("auth-token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: true,
         sameSite: "none",
-        maxAge: 1000 * 60 * 60 * 24,
       })
       .status(200)
       .json({
@@ -470,9 +468,8 @@ exports.updateClub = async (req, res) => {
     return res
       .cookie("auth-token", newToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: true,
         sameSite: "none",
-        maxAge: 1000 * 60 * 60 * 24,
       })
       .status(200)
       .json({
@@ -617,9 +614,8 @@ exports.temporaryLogin = async (req, res) => {
     return res
       .cookie("auth-token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: true,
         sameSite: "none",
-        maxAge: 1000 * 60 * 60 * 24,
       })
       .status(200)
       .json({
