@@ -71,106 +71,47 @@ exports.addTransaction = async (req, res) => {
   try {
     const { memberId, type, payableAmount, couponAmount } = req.body;
 
-    if (!memberId) {
+    if (!memberId || (type !== "issue" && type !== "receive") || isNaN(payableAmount) || isNaN(couponAmount) || payableAmount < 0 || couponAmount < 0) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Member ID is required",
-        data: null,
-      });
-    }
-
-    if (type !== "issue" && type !== "receive") {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "Invalid transaction type",
-        data: null,
-      });
-    }
-
-    if (isNaN(payableAmount) || isNaN(couponAmount)) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "Amount should be a number",
-        data: null,
-      });
-    }
-
-    if (payableAmount < 0 || couponAmount < 0) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: "Amount should be greater than 0",
+        message: "Invalid input data",
         data: null,
       });
     }
 
     const member = await MemberSchema.findById(memberId);
-
-    if (!member) {
-      return res.status(404).json({
-        statusCode: 404,
-        message: "Member not found",
-        data: null,
-      });
-    }
+    if (!member) return res.status(404).json({ statusCode: 404, message: "Member not found", data: null });
 
     const wallet = await WalletSchema.findById(member.wallet);
+    if (!wallet) return res.status(404).json({ statusCode: 404, message: "Wallet not found", data: null });
 
-    if (!wallet) {
-      return res.status(404).json({
-        statusCode: 404,
-        message: "Wallet not found",
-        data: null,
-      });
-    }
+    const newCoupon = await CouponSchema.create({ amount: couponAmount, memberId: member._id });
 
-    const newCoupon = await CouponSchema.create({
-      amount: couponAmount,
+    let walletAmount = wallet.balance;
+    if (type === "issue") walletAmount -= (couponAmount + payableAmount);
+    if (type === "receive") walletAmount += couponAmount;
+
+    wallet.balance = walletAmount;
+
+    const transaction = await TransactionSchema.create({
+      walletId: wallet._id,
       memberId: member._id,
+      couponId: newCoupon._id,
+      walletAmount,
+      payableAmount,
+      couponAmount,
+      type,
+      status: type === "issue" ? "paid" : "none",
     });
 
-    if (type === "issue") {
-      const walletAmount = wallet.balance - (couponAmount + payableAmount);
-      wallet.balance = walletAmount;
-      const transaction = await TransactionSchema.create({
-        walletId: wallet._id,
-        memberId: member._id,
-        couponId: newCoupon._id,
-        walletAmount,
-        payableAmount,
-        couponAmount,
-        type,
-        status: "paid",
-      });
-      await wallet.save();
-      return res.status(201).json({
-        statusCode: 201,
-        message: "Transaction added successfully",
-        data: transaction,
-        exception: null,
-      });
-    }
+    await wallet.save();
 
-    if (type === "receive") {
-      const walletAmount = wallet.balance + couponAmount;
-      wallet.balance = walletAmount;
-      const transaction = await TransactionSchema.create({
-        walletId: wallet._id,
-        memberId: member._id,
-        couponId: newCoupon._id,
-        walletAmount,
-        payableAmount,
-        couponAmount,
-        type,
-        status: "none",
-      });
-      await wallet.save();
-      return res.status(201).json({
-        statusCode: 201,
-        message: "Transaction added successfully",
-        data: transaction,
-        exception: null,
-      });
-    }
+    return res.status(201).json({
+      statusCode: 201,
+      message: "Transaction added successfully",
+      data: transaction,
+      exception: null,
+    });
   } catch (error) {
     console.log(error);
     return res.status(500).json({
@@ -181,6 +122,7 @@ exports.addTransaction = async (req, res) => {
     });
   }
 };
+
 
 exports.fetchTransactions = async (req, res) => {
   try {
