@@ -125,6 +125,8 @@ exports.deleteMember = async (req, res) => {
 
     await WalletSchema.findOneAndDelete({ memberId: member._id });
 
+    cache.del(memberId);
+
     return res.status(200).json({
       statusCode: 200,
       message: "Member deleted successfully",
@@ -196,6 +198,8 @@ exports.updateMember = async (req, res) => {
         data: null,
       });
     }
+   
+    cache.del(memberId, member);
 
     return res.status(200).json({
       statusCode: 200,
@@ -212,6 +216,8 @@ exports.updateMember = async (req, res) => {
       data: null,
     });
   }
+
+
 };
 
 exports.updateImage = async (req, res) => {
@@ -364,7 +370,7 @@ exports.getMemberById = async (req, res) => {
       });
     }
 
-    const member = await MemberSchema.findById(memberId);
+    const member = await MemberSchema.findById(memberId).populate("wallet");
     if (!member) {
       return res.status(404).json({
         statusCode: 404,

@@ -276,7 +276,7 @@ exports.getAllTransactions = async (req, res) => {
         exception: null,
       });
     }
-
+    const today = new Date();
     const todaysTotalTransactions = await TransactionSchema.find({
       timeStamp: {
         $gte: new Date(today.setHours(0, 0, 0, 0)),

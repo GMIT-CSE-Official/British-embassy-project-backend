@@ -12,8 +12,8 @@ const validateClubRegistration = async (req, res, next) => {
   } catch (error) {
     const errorMsg = error.errors.map((err) => err.message).join(", ");
     res.status(400).json({
-      message: "Invalid request body",
-      error: errorMsg,
+      message: errorMsg,
+      error: "Invalid request body",
     });
   }
 };
@@ -25,8 +25,8 @@ const validateClubLogin = async (req, res, next) => {
   } catch (error) {
     const errorMsg = error.errors.map((err) => err.message).join(", ");
     res.status(400).json({
-      message: "Invalid request body",
-      error: errorMsg,
+      message: errorMsg,
+      error: "Invalid request body",
     });
   }
 };
