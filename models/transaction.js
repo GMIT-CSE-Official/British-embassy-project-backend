@@ -36,7 +36,7 @@ const transactionSchema = new mongoose.Schema({
   },
   timeStamp: {
     type: Date,
-    default: Date.now(),
+    default: new Date(),
   },
 });
 
