@@ -70,6 +70,7 @@ exports.addMember = async (req, res) => {
         url,
         public_id,
       },
+      timeStamp: new Date(),
     });
 
     const wallet = await WalletSchema.create({
@@ -198,7 +199,7 @@ exports.updateMember = async (req, res) => {
         data: null,
       });
     }
-   
+
     cache.del(memberId, member);
 
     return res.status(200).json({
@@ -216,8 +217,6 @@ exports.updateMember = async (req, res) => {
       data: null,
     });
   }
-
-
 };
 
 exports.updateImage = async (req, res) => {

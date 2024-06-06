@@ -704,7 +704,10 @@ exports.temporaryLogout = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await ClubAuthorization.find();
+    const users = await ClubAuthorization.find({
+      verified: true,
+      temporary: false,
+    });
     return res.status(200).json({
       statusCode: 200,
       message: "Operators fetched successfully",
