@@ -359,10 +359,9 @@ exports.addMemberImage = async (req, res) => {
   }
 };
 
-const generateQRCode = async (member) => {
+const generateQRCode = async (frontendUrl) => {
   try {
-    const jsonString = JSON.stringify(member);
-    const qrCode = await QRCode.toDataURL(jsonString);
+    const qrCode = await QRCode.toDataURL(frontendUrl);
     return qrCode;
   } catch (error) {
     console.log(error);
@@ -373,10 +372,12 @@ const generateQRCode = async (member) => {
 exports.getMemberById = async (req, res) => {
   try {
     const { memberId } = req.params;
+    const randomSecret = Math.random().toString(36).substring(7);
+    const frontendUrl = `${process.env.FRONTEND_URL}/member/data/${randomSecret}/${memberId}`;
 
     if (cache.has(memberId)) {
       const cachedMember = cache.get(memberId);
-      const qrCode = await generateQRCode(cachedMember);
+      const qrCode = await generateQRCode(frontendUrl);
       return res.status(200).json({
         statusCode: 200,
         message: "Member found",
@@ -396,7 +397,7 @@ exports.getMemberById = async (req, res) => {
       });
     }
 
-    const qrCode = await generateQRCode(member);
+    const qrCode = await generateQRCode(frontendUrl);
 
     cache.set(memberId, member);
 
