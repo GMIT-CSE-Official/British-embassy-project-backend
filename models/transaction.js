@@ -34,6 +34,11 @@ const transactionSchema = new mongoose.Schema({
     enum: ["due", "paid", "none"],
     required: true,
   },
+  mode: {
+    type: String,
+    enum: ["CASH", "CARD", "UPI"],
+    required: true,
+  },
   timeStamp: {
     type: Date,
     default: new Date(),

@@ -7,6 +7,8 @@ const {
   getMembers,
   addMemberImage,
   getMemberById,
+  downloadCardPdf,
+  sendCardAsEmail,
 } = require("../controller/member");
 const { isAuthenticated, isInClub } = require("../middleware/auth");
 const { validateAddMember } = require("../middleware/zod-user-middleware");
@@ -19,7 +21,7 @@ router.post(
   validateAddMember,
   addMember
 );
-router.get("/get-member/:memberId", isAuthenticated, isInClub, getMemberById);
+router.get("/get-member/:memberId", getMemberById);
 
 router.put("/update-member/:memberId", isAuthenticated, isInClub, updateMember);
 router.put(
@@ -34,7 +36,9 @@ router.delete(
   isInClub,
   deleteMember
 );
-router.get("/get-all-members", isAuthenticated, isInClub, getMembers);
+router.get("/get-all-members", getMembers);
 router.post("/add-member-image", isAuthenticated, isInClub, addMemberImage);
+router.post("/download-card-pdf", downloadCardPdf);
+router.post("/send-card-email", sendCardAsEmail);
 
 module.exports = router;
