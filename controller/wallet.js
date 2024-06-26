@@ -2,6 +2,7 @@ const WalletSchema = require("../models/wallet");
 const MemberSchema = require("../models/members");
 const CouponSchema = require("../models/coupon");
 const TransactionSchema = require("../models/transaction");
+const { sendMail } = require("../utils/mail-service");
 
 exports.getWallet = async (req, res) => {
   try {
@@ -144,6 +145,22 @@ exports.addTransaction = async (req, res) => {
     });
 
     await wallet.save();
+
+    await sendMail({
+      to: member.email,
+      subject: "Transaction Details",
+      text: `Transaction ID: ${
+        transaction._id
+      }\nType: ${type}\nPayable Amount: ${payableAmount}\nCoupon Amount: ${couponAmount}\nWallet Amount: ${walletAmount}\nStatus: ${transactionStatus}\nTime Stamp: ${
+        transaction.timeStamp
+      }\nMode: ${mode.toUpperCase()}`,
+      html: `<h1>Transaction Details</h1><p>Transaction ID: ${
+        transaction._id
+      }</p><p>Type: ${type}</p><p>Payable Amount: ${payableAmount}</p><p>Coupon Amount: ${couponAmount}</p><p>Wallet Amount: ${walletAmount}</p><p>Status: ${transactionStatus}</p><p>Time Stamp: ${
+        transaction.timeStamp
+      }</p><p>Mode: ${mode.toUpperCase()}</p>`,
+    });
+
     return res.status(201).json({
       statusCode: 201,
       message: "Transaction added successfully",
