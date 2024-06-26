@@ -6,6 +6,7 @@ const {
   addTransaction,
   fetchTransactions,
   getAllTransactions,
+  downloadTransactionAsCSV,
 } = require("../controller/wallet.js");
 
 router.get("/get/:memberId", isAuthenticated, isInClub, getWallet);
@@ -17,5 +18,12 @@ router.get(
   fetchTransactions
 );
 router.get("/get-transactions", isAuthenticated, isInClub, getAllTransactions);
+
+router.get(
+  "/download-tr-csv",
+  isAuthenticated,
+  isInClub,
+  downloadTransactionAsCSV
+);
 
 module.exports = router;
