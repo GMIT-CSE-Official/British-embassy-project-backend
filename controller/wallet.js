@@ -71,66 +71,75 @@ exports.addTransaction = async (req, res) => {
   try {
     const { memberId, type, payableAmount, couponAmount, mode } = req.body;
 
-    if (!memberId)
+    if (!memberId || !mode) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Member ID is required",
+        message: !memberId ? "Member ID is required" : "Mode is required",
         data: null,
       });
-    if (type !== "issue" && type !== "receive")
+    }
+
+    if (type !== "issue" && type !== "receive") {
       return res.status(400).json({
         statusCode: 400,
         message: "Invalid transaction type",
         data: null,
       });
-    if (isNaN(payableAmount) || isNaN(couponAmount))
-      return res.status(400).json({
-        statusCode: 400,
-        message: "Amount should be a number",
-        data: null,
-      });
-    if (payableAmount < 0 || couponAmount < 0)
-      return res.status(400).json({
-        statusCode: 400,
-        message: "Amount should be greater than 0",
-        data: null,
-      });
+    }
 
-    if (!mode) {
+    if (
+      isNaN(payableAmount) ||
+      isNaN(couponAmount) ||
+      payableAmount < 0 ||
+      couponAmount < 0
+    ) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Mode is required",
+        message: "Amount should be a non-negative number",
         data: null,
       });
     }
 
     const member = await MemberSchema.findById(memberId);
-    if (!member)
-      return res
-        .status(404)
-        .json({ statusCode: 404, message: "Member not found", data: null });
+    if (!member) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Member not found",
+        data: null,
+      });
+    }
 
     const wallet = await WalletSchema.findById(member.wallet);
-    if (!wallet)
-      return res
-        .status(404)
-        .json({ statusCode: 404, message: "Wallet not found", data: null });
+    if (!wallet) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Wallet not found",
+        data: null,
+      });
+    }
 
     const newCoupon = await CouponSchema.create({
       amount: couponAmount,
       memberId: member._id,
     });
 
-    let walletAmount, transactionStatus;
+    let walletAmount,
+      transactionStatus,
+      creditAmount = 0,
+      debitAmount = 0;
+
     if (type === "issue") {
       walletAmount = wallet.balance - (couponAmount - payableAmount);
+      debitAmount = couponAmount - payableAmount;
       transactionStatus = "paid";
     } else {
       walletAmount = wallet.balance + couponAmount;
+      creditAmount = couponAmount;
       transactionStatus = "none";
     }
 
     wallet.balance = walletAmount;
+
     const transaction = await TransactionSchema.create({
       walletId: wallet._id,
       memberId: member._id,
@@ -138,33 +147,74 @@ exports.addTransaction = async (req, res) => {
       walletAmount,
       payableAmount,
       couponAmount,
-      type: type,
+      type,
       status: transactionStatus,
       timeStamp: new Date(),
       mode: mode.toUpperCase(),
+      creditAmount,
+      debitAmount,
+      memberName: member.name,
+      firstname: member.firstname,
+      lastname: member.lastname,
+      mobileNumber: member.mobileNumber,
     });
 
     await wallet.save();
 
-    await sendMail({
-      to: member.email,
-      subject: "Transaction Details",
-      text: `Transaction ID: ${
-        transaction._id
-      }\nType: ${type}\nPayable Amount: ${payableAmount}\nCoupon Amount: ${couponAmount}\nWallet Amount: ${walletAmount}\nStatus: ${transactionStatus}\nTime Stamp: ${
-        transaction.timeStamp
-      }\nMode: ${mode.toUpperCase()}`,
-      html: `<h1>Transaction Details</h1><p>Transaction ID: ${
-        transaction._id
-      }</p><p>Type: ${type}</p><p>Payable Amount: ${payableAmount}</p><p>Coupon Amount: ${couponAmount}</p><p>Wallet Amount: ${walletAmount}</p><p>Status: ${transactionStatus}</p><p>Time Stamp: ${
-        transaction.timeStamp
-      }</p><p>Mode: ${mode.toUpperCase()}</p>`,
-    });
+    await sendMail(
+      member.email,
+      "Transaction Details",
+      `Your transaction with ID ${transaction._id} has been ${transactionStatus}.`,
+      `
+      <h1>Transaction Details</h1>
+      <p>Your transaction with ID ${transaction._id} has been ${transactionStatus}.</p>
+      <p>MEMBER ID:${memberId} with Name:${member.name}</p>
+      <p>Transaction Type: ${type}</p>
+      <p>Mode:${mode}</p>
+      <p>Credited Amount : ${creditAmount}</p>
+      <p>Debited Amount : ${debitAmount}</p>
+      <p>Wallet Amount : ${walletAmount}</p>
+      `
+    );
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const todayTransactions = await TransactionSchema.aggregate([
+      {
+        $match: {
+          timeStamp: { $gte: startOfDay, $lt: endOfDay },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalCredited: { $sum: "$creditAmount" },
+          totalDebited: { $sum: "$debitAmount" },
+          totalTransactions: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const { totalCredited, totalDebited, totalTransactions } =
+      todayTransactions[0] || {
+        totalCredited: 0,
+        totalDebited: 0,
+        totalTransactions: 0,
+      };
 
     return res.status(201).json({
       statusCode: 201,
       message: "Transaction added successfully",
-      data: transaction,
+      data: {
+        transaction,
+        totalCredited,
+        totalDebited,
+        totalTransactions,
+      },
       exception: null,
     });
   } catch (error) {
@@ -249,8 +299,7 @@ exports.fetchTransactions = async (req, res) => {
 
 exports.getAllTransactions = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
-
+    const { startDate, endDate, search } = req.query;
     const query = {};
 
     if (startDate && endDate) {
@@ -262,31 +311,59 @@ exports.getAllTransactions = async (req, res) => {
       };
     }
 
-    const transactions = await TransactionSchema.find(query)
-      .populate([{ path: "walletId" }, { path: "couponId" }])
-      .sort({ timeStamp: -1 });
+    if (search) {
+      const searchRegex = new RegExp(search, "i");
+      query.$or = [
+        { memberName: { $regex: searchRegex } },
+        { memberId: { $regex: searchRegex } },
+        { mobileNumber: { $regex: searchRegex } },
+      ];
+    }
 
-    if (!transactions.length) {
+    const transactions = await TransactionSchema.find(query)
+      .populate("walletId couponId")
+      .sort({ timeStamp: -1 })
+      .exec();
+
+    if (transactions.length < 1) {
       return res.status(404).json({
         statusCode: 404,
         message: "No transactions found",
         data: null,
-        exception: null,
       });
     }
 
     const totalTransactions = await TransactionSchema.countDocuments(query);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const todaysTotalTransactions = await TransactionSchema.countDocuments({
-      timeStamp: {
-        $gte: today,
-        $lt: tomorrow,
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+
+    const todayStats = await TransactionSchema.aggregate([
+      {
+        $match: {
+          timeStamp: {
+            $gte: startOfDay,
+            $lt: endOfDay,
+          },
+        },
       },
-    });
+      {
+        $group: {
+          _id: null,
+          totalCredited: { $sum: "$creditAmount" },
+          totalDebited: { $sum: "$debitAmount" },
+          totalTransactions: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const {
+      totalCredited = 0,
+      totalDebited = 0,
+      totalTransactions: todaysTotalTransactions = 0,
+    } = todayStats[0] || {};
 
     return res.status(200).json({
       statusCode: 200,
@@ -294,7 +371,8 @@ exports.getAllTransactions = async (req, res) => {
       data: transactions,
       totalTransactions,
       todaysTotalTransactions,
-      exception: null,
+      totalCredited,
+      totalDebited,
     });
   } catch (error) {
     console.log(error);

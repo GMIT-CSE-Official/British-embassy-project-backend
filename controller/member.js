@@ -52,7 +52,7 @@ exports.addMember = async (req, res) => {
 
     const shortDate = new Date().toISOString().slice(2, 10).replace(/-/g, "");
 
-    const memberId = `BEC${shortDate}${allMembersCount + 1}`;
+    const memberId = `BCK${shortDate}${allMembersCount + 1}`;
 
     const member = new MemberSchema({
       _id: memberId.replace(/\s/g, ""),
@@ -375,18 +375,6 @@ exports.getMemberById = async (req, res) => {
     const randomSecret = Math.random().toString(36).substring(7);
     const frontendUrl = `${process.env.FRONTEND_URL}/member/data/${randomSecret}/${memberId}`;
 
-    if (cache.has(memberId)) {
-      const cachedMember = cache.get(memberId);
-      const qrCode = await generateQRCode(frontendUrl);
-      return res.status(200).json({
-        statusCode: 200,
-        message: "Member found",
-        exception: null,
-        data: cachedMember,
-        qrCode: qrCode,
-      });
-    }
-
     const member = await MemberSchema.findById(memberId).populate("wallet");
     if (!member) {
       return res.status(404).json({
@@ -396,11 +384,7 @@ exports.getMemberById = async (req, res) => {
         data: null,
       });
     }
-
     const qrCode = await generateQRCode(frontendUrl);
-
-    cache.set(memberId, member);
-
     return res.status(200).json({
       statusCode: 200,
       message: "Member found",
@@ -421,13 +405,12 @@ exports.getMemberById = async (req, res) => {
 
 exports.downloadCardPdf = async (req, res) => {
   try {
-    const { image } = req.body;
+    const { frontImage: frontimage, backImage: backimage } = req.body;
 
-    if (!image) {
+    if (!frontimage || !backimage) {
       return res.status(400).json({
         statusCode: 400,
         message: "Image not provided",
-        exception: null,
         data: null,
       });
     }
@@ -439,47 +422,73 @@ exports.downloadCardPdf = async (req, res) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Virtual Card</title>
+        <style>
+          body, html {
+            height: 100%;
+            margin: 0;
+            background-color: #f3f4f6;
+          }
+          .card-container {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            text-align: center;
+          }
+          img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid #e1e1e1;
+          }
+        </style>
       </head>
       <body>
-        <div style="text-align: center;">
-          <img src="${image}" alt="Virtual Card" style="width: 100%; max-width: 600px;"/>
+        <div class="card-container">
+          <img src="${frontimage}" alt="Virtual Card Front"/>
+        </div>
+        <div class="card-container">
+          <img src="${backimage}" alt="Virtual Card Back"/>
         </div>
       </body>
       </html>
     `;
 
-    pdf.create(htmlContent).toStream((err, buffer) => {
+    pdf.create(htmlContent).toBuffer((err, buffer) => {
       if (err) {
-        console.log(err);
+        console.error(err);
         return res.status(500).json({
           statusCode: 500,
-          message: "Failed to download pdf",
-          exception: err,
+          message: "Failed to create PDF",
           data: null,
         });
       }
-      return res
-        .writeHead(200, {
+
+      try {
+        res.writeHead(200, {
           "Content-Type": "application/pdf",
           "Content-Disposition": "attachment; filename=virtual-card.pdf",
-        })
-        .end(buffer);
+        });
+        res.end(buffer);
+      } catch (writeError) {
+        console.error("Failed to write response:", writeError);
+      }
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return res.status(500).json({
       statusCode: 500,
-      message: "Failed to download pdf",
-      exception: error,
+      message: "Failed to process request",
       data: null,
     });
   }
 };
-
 exports.sendCardAsEmail = async (req, res) => {
   try {
-    const { email, image } = req.body;
-    if (!email || !image) {
+    const { email, frontImage, backImage } = req.body;
+    if (!email || !frontImage || !backImage) {
       return res.status(400).json({
         statusCode: 400,
         message: "Email or image not provided",
@@ -488,17 +497,59 @@ exports.sendCardAsEmail = async (req, res) => {
       });
     }
 
+    const member = await MemberSchema.findOne({
+      email: email,
+    });
+
+    if (!member) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "Member not found",
+        exception: null,
+        data: null,
+      });
+    }
+
+    const attachment = [
+      {
+        filename: "frontImage.png",
+        content: frontImage.split("base64,")[1],
+        encoding: "base64",
+        cid: "frontImage",
+      },
+      {
+        filename: "backImage.png",
+        content: backImage.split("base64,")[1],
+        encoding: "base64",
+        cid: "backImage",
+      },
+    ];
+
     const htmlContent = `
-      <div style="text-align: center;">
-        <img src="${image}" alt="Virtual Card" style="width: 100%; max-width: 600px;"/>
-      </div>
+      <html>
+        <body>
+          <h1>Virtual Card</h1>
+          <div>
+            <span>${member.firstname}</span> 
+            <span>${member.lastname}</span>
+          </div>
+          <img src="cid:frontImage" alt="Front Image"
+            style="margin-top: 20px; width: 100%; max-width:360px; height: auto; border-radius: 8px; border: 1px solid #e1e1e1; margin-left: 20px;"
+           />
+          <img src="cid:backImage" alt="Back Image" 
+           style="margin-top: 20px; width: 100%; max-width:360px; height: auto; border-radius: 8px; border: 1px solid #e1e1e1; margin-left: 20px;"
+          />
+        </body>
+      </html>
     `;
 
-    const response = await sendMail({
-      to: email,
-      subject: "Virtual Card",
-      html: htmlContent,
-    });
+    const response = await sendMail(
+      email,
+      "Virtual Card",
+      "Virtual Card",
+      htmlContent,
+      attachment
+    );
 
     if (!response) {
       return res.status(400).json({

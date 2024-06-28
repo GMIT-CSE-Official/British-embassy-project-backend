@@ -1,7 +1,11 @@
 const nodemailer = require("nodemailer");
 
-exports.sendMail = async (to, subject, text, html) => {
+exports.sendMail = async (to, subject, text, html, attachment) => {
   try {
+    if (!to) {
+      throw new Error("Email address is required");
+    }
+
     const transport = nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
       service: process.env.EMAIL_SERVICE,
@@ -18,10 +22,11 @@ exports.sendMail = async (to, subject, text, html) => {
       subject,
       text,
       html,
+      attachments: attachment,
     });
     return info;
   } catch (error) {
     console.log(error);
-    return error;
+    throw new Error(error.message);
   }
 };
