@@ -58,6 +58,7 @@ exports.addMember = async (req, res) => {
       _id: memberId.replace(/\s/g, ""),
       firstname: firstName,
       lastname: lastname,
+      fullname: firstName + " " + lastname,
       name,
       mobileNumber,
       address,
@@ -177,9 +178,13 @@ exports.updateMember = async (req, res) => {
       });
     }
 
+    const fullname = firstName + " " + lastname;
+
     const member = await MemberSchema.findByIdAndUpdate(memberId, {
       firstname: firstName ? firstName : memberData.firstname,
       lastname: lastname ? lastname : memberData.lastname,
+      fullname: fullname ? fullname : memberData.fullname,
+
       mobileNumber: mobileNumber ? mobileNumber : memberData.mobileNumber,
       address: address ? address : memberData.address,
       idProof: {
@@ -295,6 +300,7 @@ exports.getMembers = async (req, res) => {
     const totalMembers = await MemberSchema.find().countDocuments();
     const filter = new MemberFilter(req.query).filter().sort().paginate();
     const members = await filter.exec();
+
     return res.status(200).json({
       statusCode: 200,
       message: "Members found",
@@ -571,6 +577,165 @@ exports.sendCardAsEmail = async (req, res) => {
     return res.status(500).json({
       statusCode: 500,
       message: "Failed to send email",
+      exception: error,
+      data: null,
+    });
+  }
+};
+
+exports.sendReminderBeforeOneMonth = async (req, res) => {
+  try {
+    const members = await MemberSchema.find({
+      expiryDate: {
+        $gte: new Date(),
+        $lte: new Date(new Date().setDate(new Date().getDate() + 30)),
+      },
+    });
+
+    if (!members) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "No members found",
+        exception: null,
+        data: null,
+      });
+    }
+
+    const htmlContent = `
+      <html>
+        <body>
+          <h1>Membership Expiry Reminder</h1>
+          <p>Your membership is about to expire in 30 days. Please renew your membership.</p>
+        </body>
+      </html>
+    `;
+
+    members.forEach(async (member) => {
+      await sendMail(
+        member.email,
+        "Membership Expiry Reminder",
+        "Membership Expiry Reminder",
+        htmlContent
+      );
+    });
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Reminder sent successfully",
+      exception: null,
+      data: null,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Failed to send reminder",
+      exception: error,
+      data: null,
+    });
+  }
+};
+
+exports.sendReminderBeforeOneWeek = async (req, res) => {
+  try {
+    const members = await MemberSchema.find({
+      expiryDate: {
+        $gte: new Date(),
+        $lte: new Date(new Date().setDate(new Date().getDate() + 7)),
+      },
+    });
+
+    if (!members) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "No members found",
+        exception: null,
+        data: null,
+      });
+    }
+
+    const htmlContent = `
+      <html>
+        <body>
+          <h1>Membership Expiry Reminder</h1>
+          <p>Your membership is about to expire in 7 days. Please renew your membership.</p>
+        </body>
+      </html>
+    `;
+
+    members.forEach(async (member) => {
+      await sendMail(
+        member.email,
+        "Membership Expiry Reminder",
+        "Membership Expiry Reminder",
+        htmlContent
+      );
+    });
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Reminder sent successfully",
+      exception: null,
+      data: null,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Failed to send reminder",
+      exception: error,
+      data: null,
+    });
+  }
+};
+
+exports.sendReminderBeforeOneDay = async (req, res) => {
+  try {
+    const members = await MemberSchema.find({
+      expiryDate: {
+        $gte: new Date(),
+        $lte: new Date(new Date().setDate(new Date().getDate() + 1)),
+      },
+    });
+
+    if (!members) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: "No members found",
+        exception: null,
+        data: null,
+      });
+    }
+
+    const htmlContent = `
+      <html>
+        <body>
+          <h1>Membership Expiry Reminder</h1>
+          <p>Your membership is about to expire in 1 day. Please renew your membership.</p>
+        </body>
+      </html>
+    `;
+
+    members.forEach(async (member) => {
+      await sendMail(
+        member.email,
+        "Membership Expiry Reminder",
+        "Membership Expiry Reminder",
+        htmlContent
+      );
+    });
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Reminder sent successfully",
+      exception: null,
+      data: null,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      statusCode: 500,
+      message: "Failed to send reminder",
       exception: error,
       data: null,
     });

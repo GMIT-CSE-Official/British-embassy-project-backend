@@ -15,6 +15,11 @@ const fileUpload = require("express-fileupload");
 const MongoStore = require("connect-mongo");
 const cron = require("node-cron");
 const {
+  sendReminderBeforeOneMonth,
+  sendReminderBeforeOneWeek,
+  sendReminderBeforeOneDay,
+} = require("./controller/member");
+const {
   deleteUnverifiedClubs,
   removeTemporaryAdmins,
 } = require("./controller/club");
@@ -107,4 +112,7 @@ app.use((req, res) => {
 cron.schedule("0 3 * * *", async () => {
   await deleteUnverifiedClubs();
   await removeTemporaryAdmins();
+  await sendReminderBeforeOneMonth();
+  await sendReminderBeforeOneWeek();
+  await sendReminderBeforeOneDay();
 });
