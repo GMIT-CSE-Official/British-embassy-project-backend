@@ -37,6 +37,7 @@ class MemberFilter {
           { email: { $regex: searchRegex } },
           { mobileNumber: { $regex: searchRegex } },
           { _id: { $regex: searchRegex } },
+          { fullname: { $regex: searchRegex } },
         ],
       })
       .sort(this.queryString.sort)

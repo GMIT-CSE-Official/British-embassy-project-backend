@@ -16,6 +16,10 @@ const memberSchema = new mongoose.Schema({
     min: 6,
     max: 255,
   },
+  fullname: {
+    type: String,
+    required: true,
+  },
   name: {
     type: String,
     required: true,

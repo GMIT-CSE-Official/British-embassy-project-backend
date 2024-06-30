@@ -12,7 +12,7 @@ const {
 router.get("/get/:memberId", isAuthenticated, isInClub, getWallet);
 router.post("/addTransaction", isAuthenticated, isInClub, addTransaction);
 router.get(
-  "/fetchTransactions/:memberId",
+  "/fetchTransactions",
   isAuthenticated,
   isInClub,
   fetchTransactions

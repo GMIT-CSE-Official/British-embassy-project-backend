@@ -130,7 +130,8 @@ exports.addTransaction = async (req, res) => {
 
     if (type === "issue") {
       walletAmount = wallet.balance - (couponAmount - payableAmount);
-      debitAmount = couponAmount - payableAmount;
+      debitAmount = couponAmount;
+      creditAmount = payableAmount;
       transactionStatus = "paid";
     } else {
       walletAmount = wallet.balance + couponAmount;
@@ -157,6 +158,7 @@ exports.addTransaction = async (req, res) => {
       firstname: member.firstname,
       lastname: member.lastname,
       mobileNumber: member.mobileNumber,
+      fullname: member.firstname + " " + member.lastname,
     });
 
     await wallet.save();
@@ -167,8 +169,12 @@ exports.addTransaction = async (req, res) => {
       `Your transaction with ID ${transaction._id} has been ${transactionStatus}.`,
       `
       <h1>Transaction Details</h1>
-      <p>Your transaction with ID ${transaction._id} has been ${transactionStatus}.</p>
-      <p>MEMBER ID:${memberId} with Name:${member.name}</p>
+      <p>Your transaction with ID ${
+        transaction._id
+      } has been ${transactionStatus}.</p>
+      <p>MEMBER ID:${memberId} with Name:${
+        member.fullname + " " + member.lastname
+      }</p>
       <p>Transaction Type: ${type}</p>
       <p>Mode:${mode}</p>
       <p>Credited Amount : ${creditAmount}</p>
@@ -230,17 +236,29 @@ exports.addTransaction = async (req, res) => {
 
 exports.fetchTransactions = async (req, res) => {
   try {
-    const { memberId } = req.params;
+    const { search } = req.query;
 
-    if (!memberId) {
+    if (!search) {
       return res.status(400).json({
         statusCode: 400,
-        message: "Member ID is required",
+        message: "Member ID or Member Name or Mobile Number is required",
         data: null,
       });
     }
 
-    const member = await MemberSchema.findById(memberId);
+    const member = await MemberSchema.findOne({
+      $or: [
+        { _id: search },
+        { name: { $regex: search, $options: "i" } },
+        { mobileNumber: { $regex: search, $options: "i" } },
+        {
+          fullname: {
+            $regex: search,
+            $options: "i",
+          },
+        },
+      ],
+    }).populate("wallet");
 
     if (!member) {
       return res.status(404).json({
@@ -250,28 +268,9 @@ exports.fetchTransactions = async (req, res) => {
       });
     }
 
-    const wallet = await WalletSchema.findById(member.wallet);
-
-    if (!wallet) {
-      return res.status(404).json({
-        statusCode: 404,
-        message: "Wallet not found",
-        data: null,
-      });
-    }
-
-    const { type, startDate, endDate, sortBy } = req.query;
-
     const transactions = await TransactionSchema.find({
-      walletId: wallet._id,
-      type,
-      timeStamp: {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
-      },
-    })
-      .sort({ timeStamp: sortBy === "asc" ? 1 : -1 })
-      .populate("walletId memberId couponId");
+      memberId: member._id,
+    }).populate("walletId memberId couponId");
 
     if (transactions.length === 0) {
       return res.status(404).json({
@@ -280,11 +279,28 @@ exports.fetchTransactions = async (req, res) => {
         data: null,
       });
     }
+    const totalCreditedAmount = transactions.reduce(
+      (acc, transaction) => acc + transaction.creditAmount,
+      0
+    );
+    const totalDebitedAmount = transactions.reduce(
+      (acc, transaction) => acc + transaction.debitAmount,
+      0
+    );
+    const recentCredit = transactions[0].creditAmount;
+    const recentDebit = transactions[0].debitAmount;
 
     return res.status(200).json({
       statusCode: 200,
       message: "Transactions fetched successfully",
       data: transactions,
+      totalCreditedAmount,
+      totalDebitedAmount,
+      recentCredit,
+      recentDebit,
+      memberId: member._id,
+      memberName: member.firstname + " " + member.lastname,
+      walletBalance: member.wallet.balance,
     });
   } catch (error) {
     console.log(error);
@@ -317,6 +333,11 @@ exports.getAllTransactions = async (req, res) => {
         { memberName: { $regex: searchRegex } },
         { memberId: { $regex: searchRegex } },
         { mobileNumber: { $regex: searchRegex } },
+        {
+          fullname: {
+            $regex: searchRegex,
+          },
+        },
       ];
     }
 

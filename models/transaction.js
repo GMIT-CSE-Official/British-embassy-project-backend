@@ -44,6 +44,10 @@ const transactionSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  fullname: {
+    type: String,
+    required: true,
+  },
   mobileNumber: {
     type: String,
     required: true,
